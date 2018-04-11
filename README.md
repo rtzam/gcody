@@ -6,6 +6,7 @@ Pygcode is a python wrapper for GCODE. It gives common programming language func
 ### Basics:
 
 <python code example>
+
 ```python
 # pyGCODE example creating a serpentine pattern
 import pygcode
@@ -75,6 +76,7 @@ X-10.000000
 ```
 
 <Print head image>
+
 ![Printer Path](test_path.png)
 
 
