@@ -1,6 +1,8 @@
 # pygcode
 
-Pygcode is a python wrapper for GCODE. It gives common programming language functionality to GCODE as well as some convenient debugging tools. This is a very early draft of pygcode and it is intended for general writing of GCODE, not printer specific code. Pygcode was heavily inspired by [mecode](https://github.com/jminardi/mecode) and has modified some of their code.
+Pygcode is a python wrapper for GCODE. It gives common programming language functionality to GCODE as well as some convenient debugging tools. 
+This is a very early draft of pygcode and it is intended for general writing of GCODE, not printer specific code. 
+Pygcode was heavily inspired by [mecode](https://github.com/jminardi/mecode) and has modified some of their code.
 
 
 ### Basics:
@@ -78,6 +80,11 @@ X-10.000000
 <Print head image>
 
 ![Printer Path](test_path.png)
+
+
+### Dependancies:
+* [pyvector](https://github.com/rtZamb/pyvector) which requires numpy
+
 
 
 ### To Do:
