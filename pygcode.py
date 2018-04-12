@@ -2,7 +2,7 @@
 # version 0.1.2
 
 # imports
-from vector import *
+from pyvector import *
 
 
 ## Constants ------------------------------------------------------------------------
@@ -419,20 +419,36 @@ class gcode():
 
     
 
-    # MODIFIED FROM MECODE
-    # see https://github.com/jminardi/mecode/blob/master/mecode/main.py
-    def view(self, *args, backend='matplotlib', **kwargs):
+    # Method to visualize the printer path 
+    def view(self, *args, backend='matplotlib', fig_title='Print Path',
+             give=False,**kwargs):
         
-        """ View the generated Gcode.
-        Parameters
-        ----------
+        """ View the path given by the GCODE.
+
         backend : str (default: 'matplotlib')
             The plotting backend to use, one of 'matplotlib' or 'mayavi'.
+            
+        *args,**kwargs : are passed to matplotlib's pyplot.plot function
+        
+        fig_title : the title given to the figure. Only used is a figure is not given to plot on
+        
+        give : this command makes the method return the figure after the path data is
+                plotted. This has no effect when mayavi is the backend.
         """
 
-        # getting history
-        history = self.history
+        # checking backend input and force matplotlib if there is a mistake
+        if backend != 'matplotlib' and backend != 'mayavi':
 
+            # create warning message
+            warn = 'Incorrect backend ({}) given \nMust be either matplotlib or mayavi \nDefaulting to matplotlib'.format(backend)
+
+            # reassinging backend
+            backend = 'matplotlib'
+
+            # raising warning and continuing
+            raise Warning(warn)
+        
+        
         if backend == 'matplotlib':
             from mpl_toolkits.mplot3d import Axes3D
             import matplotlib.pyplot as plt
@@ -443,12 +459,15 @@ class gcode():
             ax.set_aspect('equal')
 
             # getting motion history
-            X, Y, Z = history[:, 0], history[:, 1], history[:, 2]
+            X = self.history[:, 0]
+            Y = self.history[:, 1]
+            Z = self.history[:, 2]
 
-            # add a label to the first point
+            # To Do add optional label to the first point
+            # Plots the 3 past printer positions on figure
             ax.plot(X, Y, Z, *args, **kwargs)
 
-            # Hack to keep 3D plot's aspect ratio square. See SO answer:
+            # Keeps aspect ratio square
             # http://stackoverflow.com/questions/13685386
             max_range = np.array([X.max()-X.min(),
                                   Y.max()-Y.min(),
@@ -461,22 +480,41 @@ class gcode():
             ax.set_ylim(mean_y - max_range, mean_y + max_range)
             ax.set_zlim(mean_z - max_range, mean_z + max_range)
 
-            # labeling figure
+            # labeling figure axes and title
             ax.set_xlabel('X ({})'.format(self.unit_sys))
             ax.set_ylabel('Y ({})'.format(self.unit_sys))
             ax.set_zlabel('Z ({})'.format(self.unit_sys))
-            plt.title('Print Path')
+            plt.title(fig_title)
 
-            # showing figure
-            plt.show()
 
-            
+            # determines whether to show the figure or to return it
+            if give:
+                return ax
+            else:
+                # showing figure
+                plt.show()
+
+            # end of view
+            return
+
+        # mayavi 
         elif backend == 'mayavi':
             from mayavi import mlab
-            mlab.plot3d(history[:, 0], history[:, 1], history[:, 2], *args, **kwargs)
-        else:
-            raise Exception("Invalid plotting backend! Choose one of mayavi or matplotlib.")
 
+            # plotting the time series
+            mlab.plot3d(self.history[:, 0],
+                        self.history[:, 1],
+                        self.history[:, 2],
+                        *args, **kwargs)
+
+            # labeling axes and title
+            mlab.xlabel('X ({})'.format(self.unit_sys))
+            mlab.ylabel('Y ({})'.format(self.unit_sys))
+            mlab.zlabel('Z ({})'.format(self.unit_sys))
+            mlab.title(title)
+
+            # end of view
+            return
 
     
     # writes the output to a file
