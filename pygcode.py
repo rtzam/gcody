@@ -1,13 +1,15 @@
-# second draft of pyGCODE
-# version 0.1.2
+'''
+Module pygcode written by Ryan Zambrotta
+'''
+
 
 # imports
-from pyvector import *
+from pyvector import * # this imports numpy as np
 
 
 ## Constants ------------------------------------------------------------------------
 NAME = 'pygcode' # name of module
-VERSION = '0.1.2' # Version of pyGCODE
+VERSION = '0.1.4' # Version of pyGCODE
 
 
 # helper GCODE class -------------------------------------------------------------
@@ -139,17 +141,30 @@ class gcode():
         # creating motion history
         self.history = vec2d(shape=(0,3))
 
-        # records the current position
-        self.current_pos = [0,0,0]
+        # records the current and previous position
+        self.current_pos = np.zeros(3)
+        self.previous_pos = np.zeros(3)
 
         # determines whether to only print lines of gcode to screen or to only save to memory
         self.debug = debug_mode
 
-        # recording if a header was used
-        self.has_head = False
+        # sets the default motion type for move (absolute coordinates)
+        self.coords = 'abs'
+
+        # sets default for
+        self.unit_sys = 'mm'
 
         # creating a library for user defined commands
         self.user_lib = {}
+
+        # internal recording of the total print time
+        self.print_time = 0 # units of minutes
+
+        # internal recording of time at each motion
+        self.t = vec(length=500)
+
+        # recording the print speed
+        self.print_speed = 0
 
         # end of init
         return
@@ -158,86 +173,126 @@ class gcode():
 
     # writes line of code with command Gl stright line motion
     def move(self, x=None,y=None,z=None,speed=None,extrude=None,com=None):
+        '''
+        Parameters:
 
+        > X: The x coordinate to move the print head to. X can be an int,float, or array
+            of shape (n,) or (n,3). If shape is (n,), then each element is used
+            sequentially as the x coordinate for each motion (each element in the array).
+            If X has shape (n,3), then each column is defined as x,y,z and each row is a
+            subsequent movement.
+        > Y: the y coordinate to move the print head to. Behaves the same as X except for
+            that only arrays of shape (n,) can be passed.
+        > Z: the z coordinate to move the print head to. Behaves the same as X except for
+            that only arrays of shape (n,) can be passed.
+        > SPEED:
+        > EXTRUDE:
+        > COM:
+        '''
+
+        # chacking if x input is
+        shape = np.shape(x)
+        if len(shape) == 2:
+
+            # (n,3) array x is broken into x,y,z components
+            if shape[1] == 3:
+                y = x[:,1]
+                z = x[:,2]
+                x = x[:,3]
+            else:
+                raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(shape))
+
+        
         # creating line of GCODE
         line = gcode_line('G1', com)
+
+        # create a temperary variable to store position to eventually pass to
+        # hidden methods to internally record motion
+        pos = np.zeros(3)
 
         # checking if given numerical intputs are single values
         if isinstance(x,int) or isinstance(x,float) or isinstance(y,int) or isinstance(y,float) or isinstance(z,int) or isinstance(z,float):
             # appending parameters to line of GCODE
-            if x:
+            if x or x == 0:
                 line.append(' X' + self.settings['pos'].format(x) )
                 # updating position
-                self.current_pos[0] = x
-            if y:
+                pos[0] = x
+            if y or y == 0:
                 line.append(' Y' + self.settings['pos'].format(y))
                 # updating position
-                self.current_pos[1] = y
-            if z:
+                pos[1] = y
+            if z or z == 0:
                 line.append(' Z' + self.settings['pos'].format(z))
                 # updating position
-                self.current_pos[2] = z
+                pos[2] = z
             if speed:
-                line.append(' F' + self.settings['speed'].format(mmps2mmpm(speed)))
+                line.append(' F' + self._speed(speed))
             if extrude:
                 line.append(' E' + self.settings['extrude'].format(extrude))
 
+            # determining time to move
+            
+            
             # writing to memory
-            self.write(line.done(),True)
+            self.write(line,pos)
             # end of move
 
         else:
             if len(x) == len(y) and len(x) == len(z):
                 for i in range(len(x)):
                     # appending parameters to line of GCODE
-                    if x[i]:
+                    if x[i] or x[i] == 0 :
                         line.append(' X' + self.settings['pos'].format(x[i]) )
                         # updating position
-                        self.current_pos[0] = x[i]
-                    if y[i]:
+                        pos[0] = x[i]
+                    if y[i] or y[i] == 0:
                         line.append(' Y' + self.settings['pos'].format(y[i]))
                         # updating position
-                        self.current_pos[1] = y[i]
-                    if z[i]:
+                        pos[1] = y[i]
+                    if z[i] or z[i] == 0:
                         line.append(' Z' + self.settings['pos'].format(z[i]))
                         # updating position
-                        self.current_pos[2] = z[i]
+                        pos[2] = z[i]
                     if speed:
-                        line.append(' F' + self.settings['speed'].format(mmps2mmpm(v)))
+                        line.append(' F' + self._speed(speed))
                     if extrude:
                         line.append(' E' + self.settings['extrude'].format(ext))
 
                     # writing to memory
-                    self.write(line.done(),True)  
+                    self.write(line,pos)  
 
                 return                
                                             
     # end of move
 
     # allowing for modelity in GCODE same as move but only write x,y,z
-    def simple_move(self, x=None,y=None,z=None, write=True,giveit=False):
+    def simple_move(self, x=None,y=None,z=None):
 
         # creating line of GCODE
         line = gcode_line()
 
+        # create a temperary variable to store position to eventually pass to
+        # hidden methods to internally record motion
+        pos = np.zeros(3)
+
         # checking if given numerical intputs are single values
         if isinstance(x,int) or isinstance(x,float) or isinstance(y,int) or isinstance(y,float) or isinstance(z,int) or isinstance(z,float):
             # appending parameters to line of GCODE
-            if x:
+            if x or x == 0:
                 line.append('X' + self.settings['pos'].format(x) + ' ')
                 # updating position
-                self.current_pos[0] = x
-            if y:
+                pos[0] = x
+            if y or y == 0:
                 line.append('Y' + self.settings['pos'].format(y) + ' ')
                 # updating position
-                self.current_pos[1] = y
-            if z:
+                pos[1] = y
+            if z or z == 0:
                 line.append('Z' + self.settings['pos'].format(z) + ' ')
                 # updating position
-                self.current_pos[2] = z
+                pos[2] = z
 
             # writing to memory
-            self.write(line.done(),True)
+            self.write(line, pos)
 
            
             # end of move
@@ -245,78 +300,196 @@ class gcode():
         else:
             if len(x) == len(y) and len(x) == len(z):
                 for i in range(len(x)):
-                    if x[i]:
+                    if x[i] or x[i] == 0:
                         line.append('X' + self.settings['pos'].format(x[i]) + ' ')
                         # updating position
-                        self.current_pos[0] = x[i]
-                    if y[i]:
+                        pos[0] = x[i]
+                    if y[i] or y[i] == 0:
                         line.append('Y' + self.settings['pos'].format(y[i]) + ' ')
                         # updating position
-                        self.current_pos[1] = y[i]
-                    if z[i]:
+                        pos[1] = y[i]
+                    if z[i] or z[i] == 0:
                         line.append('Z' + self.settings['pos'].format(z[i]) + ' ')
                         # updating position
-                        self.current_pos[2] = z[i]
+                        pos[2] = z[i]
 
                     # writing to memory
-                    self.write(line.done(),True)
+                    self.write(line, pos)
                                                     
     # end of simple_move
 
+
+    def rapid_move(self, x=None,y=None,z=None,extrude=None,com=None):
+        '''
+        Parameters:
+
+        > X: The x coordinate to move the print head to. X can be an int,float, or array
+            of shape (n,) or (n,3). If shape is (n,), then each element is used
+            sequentially as the x coordinate for each motion (each element in the array).
+            If X has shape (n,3), then each column is defined as x,y,z and each row is a
+            subsequent movement.
+        > Y: the y coordinate to move the print head to. Behaves the same as X except for
+            that only arrays of shape (n,) can be passed.
+        > Z: the z coordinate to move the print head to. Behaves the same as X except for
+            that only arrays of shape (n,) can be passed.
+        > EXTRUDE:
+        > COM:
+        '''
+
+        # chacking if x input is
+        shape = np.shape(x)
+        if len(shape) == 2:
+
+            # (n,3) array x is broken into x,y,z components
+            if shape[1] == 3:
+                y = x[:,1]
+                z = x[:,2]
+                x = x[:,3]
+            else:
+                raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(shape))
+
+        
+        # creating line of GCODE
+        line = gcode_line('G1', com)
+
+        # create a temperary variable to store position to eventually pass to
+        # hidden methods to internally record motion
+        pos = np.zeros(3)
+
+        # checking if given numerical intputs are single values
+        if isinstance(x,int) or isinstance(x,float) or isinstance(y,int) or isinstance(y,float) or isinstance(z,int) or isinstance(z,float):
+            # appending parameters to line of GCODE
+            if x or x == 0:
+                line.append(' X' + self.settings['pos'].format(x) )
+                # updating position
+                pos[0] = x
+            if y or y == 0:
+                line.append(' Y' + self.settings['pos'].format(y))
+                # updating position
+                pos[1] = y
+            if z or z == 0:
+                line.append(' Z' + self.settings['pos'].format(z))
+                # updating position
+                pos[2] = z
+            if extrude:
+                line.append(' E' + self.settings['extrude'].format(extrude))
+
+            # determining time to move
+            
+            
+            # writing to memory
+            self.write(line,pos)
+            # end of move
+
+        else:
+            if len(x) == len(y) and len(x) == len(z):
+                for i in range(len(x)):
+                    # appending parameters to line of GCODE
+                    if x[i] or x[i] == 0 :
+                        line.append(' X' + self.settings['pos'].format(x[i]) )
+                        # updating position
+                        pos[0] = x[i]
+                    if y[i] or y[i] == 0:
+                        line.append(' Y' + self.settings['pos'].format(y[i]))
+                        # updating position
+                        pos[1] = y[i]
+                    if z[i] or z[i] == 0:
+                        line.append(' Z' + self.settings['pos'].format(z[i]))
+                        # updating position
+                        pos[2] = z[i]
+                    if extrude:
+                        line.append(' E' + self.settings['extrude'].format(ext))
+
+                    # writing to memory
+                    self.write(line,pos)
+            else:
+                raise ValueError('Input arrays must be of same length')
+
+                return                
+                                            
+    # end of move
+
     
 
-    # takes speed in mmps and writes GCODE in mmpm format
-    def speed(self, v=10, com=None):
+    # Mehtod that takes speed in per second units and writes GCODE in per minute format
+    # distance units are handled by attribute self.unit_sys
+    def speed(self, v, com=None):
 
+        # update internal record of speed
+        if self.unit_sys == 'mm':
+            # convert units of milimeters per sec to milimeters per minute
+            self.print_speed = mmps2mmpm(v)
+        else:
+            # convert units of inches per sec to inches per meter
+            self.print_speed = inps2inpm(v)
+        
         # creates GCODE line
-        line = gcode_line('F' + self.settings['speed'].format(mmps2mmpm(v)), com)
+        line = gcode_line('F' + self.settings['speed'].format(self.print_speed), com)
 
         # writing to memory
-        self.write(line.done())
+        self.write(line)
         return
         # end of speed
-
-
-    # sets teh units of the system
-    def units(self, mm=True):
         
-        if mm:
-            line = gcode_line('G21', 'set units to millimeters')
-            self.unit_sys = 'mm'
-        else:
-            line = gcode_line('G20', 'set units to inches')
-            self.units_sys = 'in'
+
+    def use_mm(self, com='set units to millimeters'):
+
+        # create the gcode line and the comment
+        line = gcode_line('G21', com)
+
+        # internally recording the distance units
+        self.unit_sys = 'mm'
+
+        # writing the line to memory
+        self.write(line)
+        return
+
+    def use_in(self, com='set units to inches'):
+
+        # creates the line of gcode with inches command and comment
+        line = gcode_line('G20', com)
+
+        # internally recording unit system
+        self.unit_sys = 'in'
 
         # writing to memory
-        self.write(line.done())
+        self.write(line)
         return
-        # end of units
 
-    
-    # sets whether motion is relative to the previous point or on an
-    # absolute coordinate system
-    def coords(self, absolute=True):
 
-        # determining which coordinate system to use
-        if absolute:
-            line = gcode_line('G90','use absolute coordinates')
-            self.coord_sys = 'abs'
-        else:
-            line = gcode_line('G91', 'use relative coordinates')
-            self.coord_sys = 'rel'
+    # method to write the command to use absolute coordinates
+    def abs_coords(self, com='use absolute coordinates'):
 
-        # writing to memory
-        self.write(line.done())
+        # create gcode line with command and comment
+        line = gcode_line('G90', com)
+
+        # internally recording coordinate system
+        self.coords = 'abs'
+
+        # writing line of gcode to memory
+        self.write(line)
         return
-    # end of coords
 
+    # method to write the command to use relative coordinates
+    def rel_coords(self, com='use relative coordinates'):
+
+        # create gcode line with command and comment
+        line = gcode_line('G91', com)
+
+        # internally recording coordinate system
+        self.coords = 'rel'
+
+        # writing line of gcode to memory
+        self.write(line)
+        return
+        
 
     # adds a new layer
     def new_layer(self, com='announce new layer'):
         line = gcode_line('M790 ', com)
 
         # writing to memory
-        self.write(line.done())
+        self.write(line)
         return
 
     # end of new_layer
@@ -326,36 +499,77 @@ class gcode():
         line = gcode_line('E' + self.settings['extrude'].format(ext), com)
 
         # writing to memory
-        self.write(line.done())
+        self.write(line)
         return
         # end of extrude
         
     # writes command for comments
     def comment(self, com):
+        '''
+        Parameters
+
+        > COM: a string to be written as a comment
+        '''
         line = gcode_line(comment=com)
 
         # writing to memory
-        self.write(line.done())
+        self.write(line)
         return
         # end of comment
 
-    # command to set home
-    def set_home(self,  x=None,y=None,z=None,com='setting home position'):
+    # command that moves specific printer axes to their home position
+    def go_home(self, safe=True, x=None,y=None,z=None,com='Going to home position'):
+        '''
+        Parameters:
 
-        # command to set the home position
-        line = gecode_line('G28', com)
+        > X,Y,Z: 
+        > COM: the comment on the line
+        > SAFE: Default is true. This uses a relatively safer way of moving
+            home by raising the Z axis first to avoid hitting anything,
+            then returning home. CAUTION: This switches to relative coordinates.
+            if 
+        '''
 
-        if x:
-            line.append(' X' + self.settings['pos'].format(x))
-        if y:
-            line.append(' Y' + self.settings['pos'].format(y))
-        if z:
-            line.append(' Z' + self.settings['pos'].format(z))
+        # using the safe algorithm
+        if safe:
 
-        # recording line to mem
-        self.write(line.done())
-        # end of set_home
+            # using relative motion
+            if self.coord_sys == 'abs':
+                self.rel_coords()
+
+            # going home by raising z
+            line = gcode_line('G28', com)
+            
+            # ensuring z has acceptable values values
+            if z > 0:
+                pass
+                # raises the 
+
+            # ensuring z has good values
+            if not z or z <= 0:
+
+                # move z a different height based on type of units
+                if self.coord_sys == 'mm':
+                    z = 10
+                else:
+                    z = 4
+                
+        else:
+            # command to set the home position
+            line = gcode_line('G28', com)
+
+            if x:
+                line.append(' X' + self.settings['pos'].format(x))
+            if y:
+                line.append(' Y' + self.settings['pos'].format(y))
+            if z:
+                line.append(' Z' + self.settings['pos'].format(z))
+
+            # recording line to mem and indicating that this is a move to write
+            self.write(line, -self.current_pos)
+            # end of go home
         return
+
 
     # method that creates blank lines on the GCODE file
     def blank(self, lines=1):
@@ -366,25 +580,30 @@ class gcode():
         # creating black lines
         for i in range(lines):
             # determining how to return values
-            self.write(gcode_line().done())
+            self.write(gcode_line())
 
         # end of blank
         return 
     
     # a method that wraps other methods commonly used before any motion
-    def header(self):
+    def header(self, credit=False):
 
         # telling object that header has been set
         self.has_head = True
 
         
-        # writing header lines
-        self.comment('This is GCODE generated with {} version {}'.format(NAME,VERSION))
-        self.comment('Written by Ryan Zambrotta')
+        
 
-        self.blank(2)
-        self.units()
-        self.coords()
+        # Writes the credits as a comment
+        if credit:
+            self.comment('This is GCODE generated with {} version {}'.format(NAME,VERSION))
+            self.comment('Written by Ryan Zambrotta')
+            self.blank(2)
+
+        
+        # writing header lines
+        self.use_mm()
+        self.abs_coords()
         self.new_layer()
         self.blank(2)
 
@@ -393,7 +612,7 @@ class gcode():
     
 
     ## IMPORTANT function here. write writes a line to memory as well as parses
-    def write(self, line, move=False):
+    def write(self, line, move=None):
 
         # increasing counter 
         self.count +=1
@@ -405,23 +624,22 @@ class gcode():
             return
         else:
             # appending the line of GCODE to the vector of lines
-            if move:
-                # records motion
-                self.history.append(self.current_pos)
+            if np.any(move):
+                # records motion, time to print, and position
+                self._pos_update(move)
 
             # records GCODE
-            self.code.append(line)
+            self.code.append(line.done())
             return    
 
         # end of write 
-        return
-
-
+        return    
+         
     
 
     # Method to visualize the printer path 
     def view(self, *args, backend='matplotlib', fig_title='Print Path',
-             give=False,**kwargs):
+             color_in_time=True, cmap='jet', give=False, **kwargs):
         
         """ View the path given by the GCODE.
 
@@ -450,53 +668,135 @@ class gcode():
         
         
         if backend == 'matplotlib':
-            from mpl_toolkits.mplot3d import Axes3D
-            import matplotlib.pyplot as plt
 
-            # creating figure
-            fig = plt.figure()
-            ax = fig.gca(projection='3d')
-            ax.set_aspect('equal')
+            # using time to color the line representing printer motion
+            # help from https://matplotlib.org/gallery/lines_bars_and_markers/multicolored_line.html
+            if color_in_time:
+                from mpl_toolkits.mplot3d import Axes3D
+                import matplotlib.pyplot as plt
+                #from matplotlib import cm
 
-            # getting motion history
-            X = self.history[:, 0]
-            Y = self.history[:, 1]
-            Z = self.history[:, 2]
+                # creating figure
+                fig = plt.figure()
+                ax = fig.gca(projection='3d')
+                ax.set_aspect('equal')
 
-            # To Do add optional label to the first point
-            # Plots the 3 past printer positions on figure
-            ax.plot(X, Y, Z, *args, **kwargs)
+                # getting motion history
+                X = self.history[:, 0]
+                Y = self.history[:, 1]
+                Z = self.history[:, 2]
 
-            # Keeps aspect ratio square
-            # http://stackoverflow.com/questions/13685386
-            max_range = np.array([X.max()-X.min(),
-                                  Y.max()-Y.min(),
-                                  Z.max()-Z.min()]).max() / 2.0
+                # creating the color scheme to parametricise this plot in time
+                # Create a continuous norm to map from data points to colors
+                norm = plt.Normalize(0,self.t[-1])
+                
 
-            mean_x = X.mean()
-            mean_y = Y.mean()
-            mean_z = Z.mean()
-            ax.set_xlim(mean_x - max_range, mean_x + max_range)
-            ax.set_ylim(mean_y - max_range, mean_y + max_range)
-            ax.set_zlim(mean_z - max_range, mean_z + max_range)
+                # creating CM object that contains the method to get colors in the map
+                color_map = plt.cm.ScalarMappable(norm, cmap)
 
-            # labeling figure axes and title
-            ax.set_xlabel('X ({})'.format(self.unit_sys))
-            ax.set_ylabel('Y ({})'.format(self.unit_sys))
-            ax.set_zlabel('Z ({})'.format(self.unit_sys))
-            plt.title(fig_title)
+                # creating array of RGBA colors to pass when plotting
+                colors = color_map.to_rgba(self.t.data())
+
+                # adding colorbar to figure
+                color_map.set_array(self.t.data()) # trick to make this work from:
+                # https://stackoverflow.com/questions/8342549/matplotlib-add-colorbar-to-a-sequence-of-line-plots
+
+                # actually adding color bar with 3 tick marks
+                colorbar = fig.colorbar(color_map, ticks=[0,self.t[-1]/2,self.t[-1]],
+                                        pad=0.1)
+
+                # setting label of color bar
+                colorbar.set_label('Time (min)')
+                
+                # Plots the 3 past printer positions on figure parameterized by time
+                for i in range(1,len(X)):
+                    ax.plot(X[i-1:i+1], Y[i-1:i+1], Z[i-1:i+1], *args,
+                            color=colors[i,:], **kwargs)
+                
+                
+                # Keeps aspect ratio square
+                # http://stackoverflow.com/questions/13685386
+                max_range = np.array([X.max()-X.min(),
+                                      Y.max()-Y.min(),
+                                      Z.max()-Z.min()]).max() / 2.0
+
+                mean_x = X.mean()
+                mean_y = Y.mean()
+                mean_z = Z.mean()
+                ax.set_xlim(mean_x - max_range, mean_x + max_range)
+                ax.set_ylim(mean_y - max_range, mean_y + max_range)
+                ax.set_zlim(mean_z - max_range, mean_z + max_range)
+
+                # labeling figure axes and title
+                ax.set_xlabel('X ({})'.format(self.unit_sys))
+                ax.set_ylabel('Y ({})'.format(self.unit_sys))
+                ax.set_zlabel('Z ({})'.format(self.unit_sys))
+                plt.title(fig_title)
 
 
-            # determines whether to show the figure or to return it
-            if give:
-                return ax
+                # determines whether to show the figure or to return it
+                if give:
+                    return ax
+                else:
+                    # showing figure
+                    plt.show()
+
+                # end of view
+                return
+
+
             else:
-                # showing figure
-                plt.show()
+                from mpl_toolkits.mplot3d import Axes3D
+                import matplotlib.pyplot as plt
 
-            # end of view
-            return
+                # creating figure
+                fig = plt.figure()
+                ax = fig.gca(projection='3d')
+                ax.set_aspect('equal')
 
+                # getting motion history
+                X = self.history[:, 0]
+                Y = self.history[:, 1]
+                Z = self.history[:, 2]
+
+                # To Do add optional label to the first point
+                # Plots the 3 past printer positions on figure
+                ax.plot(X, Y, Z, *args, **kwargs)
+
+                # Keeps aspect ratio square
+                # http://stackoverflow.com/questions/13685386
+                max_range = np.array([X.max()-X.min(),
+                                      Y.max()-Y.min(),
+                                      Z.max()-Z.min()]).max() / 2.0
+
+                mean_x = X.mean()
+                mean_y = Y.mean()
+                mean_z = Z.mean()
+                ax.set_xlim(mean_x - max_range, mean_x + max_range)
+                ax.set_ylim(mean_y - max_range, mean_y + max_range)
+                ax.set_zlim(mean_z - max_range, mean_z + max_range)
+
+                # labeling figure axes and title
+                ax.set_xlabel('X ({})'.format(self.unit_sys))
+                ax.set_ylabel('Y ({})'.format(self.unit_sys))
+                ax.set_zlabel('Z ({})'.format(self.unit_sys))
+                plt.title(fig_title)
+
+
+                # determines whether to show the figure or to return it
+                if give:
+                    return ax
+                else:
+                    # showing figure
+                    plt.show()
+
+                # end of view
+                return
+
+
+
+
+            
         # mayavi 
         elif backend == 'mayavi':
             from mayavi import mlab
@@ -520,57 +820,108 @@ class gcode():
     # writes the output to a file
     def save(self, file, ext='gcode'):
 
-        #  save file name
+        # save file name
         save_file = file + '.' + ext
 
         # opening and creating file
         with open(save_file,'w') as f:
-            # iterating over all elements in sel.code
-            for i in range(len(self.code)):
-                # writing to file
-                f.write(self.code[i])
 
+            # writes all the GCODE lines at once
+            f.writelines(self.code)
+            
             # closing text file
             f.close()
 
         # end of store
         return
 
-    # creates the string and print representation of the gcode    
-    def give(self, store=False, update=True):
 
-        if update:
-            # creates variable to store all of code
-            print_item = ''
+    ## Hidden methods to handle internal processes---------------------------------------
+    ## ----------------------------------------------------------------------------------
 
-            # if no lines are written then empty list is returned
-            if len(self.code) == 0:
-                return '[]'
-            else:
-                # iterative over all lines of gcode and append to print_item
-                for i in range(len(self.code)):
-                    print_item += self.code[i]
-
+    # method to format the speed command for the move functions and recording the
+    # speed as an internal attribute unit_sys.
+    def _speed(self, v):
+        
+        # update internal record of speed
+        if self.unit_sys == 'mm':
+            # convert units of milimeters per sec to milimeters per minute
+            self.print_speed = mmps2mmpm(v)
         else:
-            # recursively defines self.print_item
-            if not self.print_item:
-                self.give(True,True)
-        
-        if store:
-            # stores the returned item
-            self.print_item = print_item
-        
-        return print_item
+            # convert units of inches per sec to inches per meter
+            self.print_speed = inps2inpm(v)
 
+        # returning the formated string of the speed
+        return self.settings['speed'].format(self.print_speed)
+
+
+    # method to internally record the time for motion. called in _pos_update
+    def _time(self):
+
+        '''
+        Calculates the time of motion, independant of coordinate systems
+        '''
+    
+        # distance is the 2-norm distance between the two points
+        distance = np.linalg.norm(self.current_pos - self.previous_pos)
+
+        # checking if print_speed has been set to non_zero
+        if self.print_speed != 0:
+            # recording the time taken to move in minutes
+            self.print_time += distance/self.print_speed
+
+        # if not, a warning is raised that time will be inf
+        else:
+            # only printing warning once
+            if self.count == 1:
+                raise Warning('Print speed not set. Print Times are Inf')
+
+        # adds an element to a vector of time
+        self.t.append(self.print_time)
+        
+        return
+    
+
+
+    # method to internally handle updating the previous and current position, the
+    # to the time to move, and recording the history of motion for plotting
+    def _pos_update(self, pos):
+        '''
+        Parameters:
+
+        > POS: the newly moved to position.  This is always recorded in absolute
+            coordinates
+        '''
+
+        # reassigning positions of the print head based on motion given by po
+        self.previous_pos = self.current_pos.copy() # passing array by copy
+        
+        # addds the current position to the motion history
+        if self.coords == 'abs':
+
+            # recording new position
+            self.current_pos = pos
+            
+        else:
+            # records position for relative coordinates. Position is in abs coordinates
+            self.current_pos += pos
+        
+        # recording motion 
+        self.history.append(self.current_pos)
+        
+        # updates the time taken to move the print head
+        self._time()
+
+        return
 
     # functions that give the printing options of the GCODE 
     def __repr__(self):
         # creates a print object and returns that 
-        return self.give()
-        
+        return ''.join(self.code)
+    
     def __str__(self):
         # creates a print object and returns that
-        return self.give()
+        return ''.join(self.code)
 
     # gives [] indexing access to the gcode vector
     def __getitem__(self, index):
@@ -578,7 +929,7 @@ class gcode():
 
     # gives built in len function access to self.code
     def __len__(self):
-        return len(self.code)
+        return self.count
 
 
 
@@ -591,9 +942,24 @@ def mmps2mmpm(v=1):
 # converting milimeters per minute in GCODE standard milimeters per second
 def mmpm2mmps(v=1):
     return v/60
-
-
-
+# convert milimeters to inchs
+def in2mm(v=1):
+    return v*25.4
+# convert inches to milimeters
+def mm2in(v=1):
+    return v/25.4
+# convert units of inches per second to inches per minute
+def inps2inpm(v=1):
+    return v*60
+# converting inches per minute in GCODE standard inches per second
+def inpm2inps(v=1):
+    return v/60
+# convert minutes to seconds
+def min2sec(t=1):
+    return t*60
+# convert seconds to minutes
+def sec2min(t=1):
+    return t/60
 
 
 
