@@ -54,34 +54,27 @@ g.save('snake','txt') # outputs file 'snake.txt'
 
 The output GCODE is:
 ```GCODE
-; This is GCODE generated with pygcode version 0.1.2 
-; Written by Ryan Zambrotta 
-
-
-G21 ; set units to millimeters 
-G90 ; use absolute coordinates 
-M790  ; announce new layer 
-
-
+G91 ; use relative coordinates 
+F600 ; 10 mmps motion 
 G1 X10.000000 ; Moves head 10 in x 
 Y10.000000  
 X-10.000000  
-Y20.000000  
+Y10.000000  
 X10.000000  
-Y30.000000  
+Y10.000000  
 X-10.000000  
-Y40.000000  
+Y10.000000  
 X10.000000  
-Y50.000000  
+Y10.000000  
 X-10.000000  
-Y60.000000  
+Y10.000000  
 X10.000000  
-Y70.000000  
+Y10.000000  
 X-10.000000  
-Y80.000000  
+Y10.000000  
 X10.000000  
-Y90.000000  
-X-10.000000
+Y10.000000  
+X-10.000000  
 ```
 
 <Print head image>
