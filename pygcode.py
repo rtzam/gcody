@@ -702,8 +702,13 @@ class gcode():
                 # https://stackoverflow.com/questions/8342549/matplotlib-add-colorbar-to-a-sequence-of-line-plots
 
                 # actually adding color bar with 3 tick marks
-                colorbar = fig.colorbar(color_map, ticks=[0,self.t[-1]/2,self.t[-1]],
-                                        pad=0.1)
+                colorbar = fig.colorbar(color_map, pad=0.09,
+                                        ticks=[0,self.t[-1]/2,self.t[-1]])
+
+                # adding tick labels to color bar
+                colorbar.ax.set_yticklabels(['0','{:0.2f}'.format(self.t[-1]/2),
+                                             '{:0.2f}'.format(self.t[-1])])
+                
 
                 # setting label of color bar
                 colorbar.set_label('Time (min)')
