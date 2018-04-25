@@ -1,7 +1,6 @@
 # User files to ignore
 test_code.py
-pygcode3.py
-vector.py
+pyvector.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
