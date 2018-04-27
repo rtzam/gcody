@@ -2,116 +2,15 @@
 Module pygcode written by Ryan Zambrotta
 '''
 
-
-# imports
+# imports -----------------------------------------------------------------------
 from pyvector import * # this imports numpy as np
-
+from gcode_line import gcode_line
+from gcode_settings import gcode_settings
+from helper import *
 
 ## Constants ------------------------------------------------------------------------
 NAME = 'pygcode' # name of module
-VERSION = '0.1.4' # Version of pyGCODE
-
-
-# helper GCODE class -------------------------------------------------------------
-
-
-# base class that represents a single line of gcode
-class gcode_line():
-
-    def __init__(self, command=None, comment=None):
-
-        # creates the gcode command
-        if command:
-            self.line = command
-        else:
-            # if no command is given then an empty line
-            self.line = ''
-
-
-        # stores the comment
-        self.comment = comment
-
-        # end of init
-        return
-
-    # methods ----------------------------------------------------------------------
-
-    # method to append items to line
-    def append(self, text):
-        self.line += str(text)
-
-
-    # method that adds the comment to the line once all text has been added
-    def done(self):
-
-        # adds comment to line
-        if self.comment:
-            # adds the comment with the gcode comment command
-            if self.line == '':
-                # if no command is given, comment format is different
-                self.line += '; ' + self.comment + ' \n'
-            else:
-                # standard comment added to line of gcode
-                self.line += ' ; ' + self.comment + ' \n'
-        else:
-            if self.line == '':
-                self.line = '\n'
-            else:
-                # if no comment is given then a new line is created
-                self.line += ' \n'
-        
-        # just returns line
-        return self.line   
-        
-    # ---------------------------------------------------------------------------------
-    # methods for builtin function access
-    
-    # creates functions that determing printing behavior
-    def __repr__(self):
-        return self.line
-    def __str__(self):
-        return self.line
-
-    # gives the length of the line
-    def __len__(self):
-        return len(self.line)
-        
-
-
-# class that stores settings for the gcode class
-class gcode_settings():
-
-    # init method contains all the default options
-    def __init__(self, pos_str='{:0.6f}',speed_str='{}',
-                 extrude_str='{:0.6f}'):
-
-        # assigning values to memory
-        self.lib = {'pos':pos_str, 'extrude':extrude_str, 'speed':speed_str}
-        
-        # end of init
-        return
-
-    # method to format a string that provides checks on input arguments
-    def format(self, lib_arg, x):
-
-        # checks if argument passed is a key in dictionary
-        if lib_arg in self.lib:
-            return self.lib[lib_arg].format(x)
-        else:
-            raise ValueError('Key {} not in dictionary'.format(lib_arg))
-    
-    # methods to use builtin functions ----------------------------------------------
-    def __repr__(self):
-        return str(self.lib)
-    def __str__(self):
-        return str(self.lib)
-    def __len__(self):
-        return len(self.lib)
-    def __getitem__(self, lib_arg):
-        return self.lib[lib_arg]
-
-        
-
+VERSION = '0.1.5' # Version of pyGCODE
 
 
 # Main GCODE class -------------------------------------------------------------
@@ -185,12 +84,13 @@ class gcode():
             that only arrays of shape (n,) can be passed.
         > Z: the z coordinate to move the print head to. Behaves the same as X except for
             that only arrays of shape (n,) can be passed.
-        > SPEED:
-        > EXTRUDE:
-        > COM:
+        > SPEED: The speed to move the print head for this motion. This input should
+            be in the same units as the attribute UNIT_SYS
+        > EXTRUDE: The volume to extrude for this motion.... NEED MORE HERE
+        > COM: The comment to be added at the end of the lines
         '''
 
-        # chacking if x input is
+        # checking if x input is a a single value, or an array
         shape = np.shape(x)
         if len(shape) == 2:
 
@@ -202,9 +102,6 @@ class gcode():
             else:
                 raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(shape))
 
-        
-        # creating line of GCODE
-        line = gcode_line('G1', com)
 
         # create a temperary variable to store position to eventually pass to
         # hidden methods to internally record motion
@@ -212,64 +109,66 @@ class gcode():
 
         # checking if given numerical intputs are single values
         if isinstance(x,int) or isinstance(x,float) or isinstance(y,int) or isinstance(y,float) or isinstance(z,int) or isinstance(z,float):
-            # appending parameters to line of GCODE
-            if x or x == 0:
-                line.append(' X' + self.settings['pos'].format(x) )
-                # updating position
-                pos[0] = x
-            if y or y == 0:
-                line.append(' Y' + self.settings['pos'].format(y))
-                # updating position
-                pos[1] = y
-            if z or z == 0:
-                line.append(' Z' + self.settings['pos'].format(z))
-                # updating position
-                pos[2] = z
-            if speed:
-                line.append(' F' + self._speed(speed))
-            if extrude:
-                line.append(' E' + self.settings['extrude'].format(extrude))
 
-            # determining time to move
+            # creating line of GCODE
+            line = gcode_line('G1', com)
+
+            # calling hidden function to do the string formatting
+            # This command writes the gcode line to memory
+            self._move_format(line,pos,
+                              x,y,z,
+                              speed,extrude)
             
             
-            # writing to memory
-            self.write(line,pos)
             # end of move
 
         else:
+            # array case
             if len(x) == len(y) and len(x) == len(z):
+                
+                # Creating GCODE line for all row in x
                 for i in range(len(x)):
-                    # appending parameters to line of GCODE
-                    if x[i] or x[i] == 0 :
-                        line.append(' X' + self.settings['pos'].format(x[i]) )
-                        # updating position
-                        pos[0] = x[i]
-                    if y[i] or y[i] == 0:
-                        line.append(' Y' + self.settings['pos'].format(y[i]))
-                        # updating position
-                        pos[1] = y[i]
-                    if z[i] or z[i] == 0:
-                        line.append(' Z' + self.settings['pos'].format(z[i]))
-                        # updating position
-                        pos[2] = z[i]
-                    if speed:
-                        line.append(' F' + self._speed(speed))
-                    if extrude:
-                        line.append(' E' + self.settings['extrude'].format(ext))
 
-                    # writing to memory
-                    self.write(line,pos)  
+                    # creating line of GCODE
+                    line = gcode_line('G1', com)
+                    
+                    # calling hidden function to do the string formatting
+                    # This command writes the gcode line to memory
+                    self._move_format(line,pos,x[i],y[i],z[i],speed,extrude)
 
-                return                
-                                            
+                return                      
     # end of move
+
+    
 
     # allowing for modelity in GCODE same as move but only write x,y,z
     def simple_move(self, x=None,y=None,z=None):
+        '''
+        Parameters:
 
-        # creating line of GCODE
-        line = gcode_line()
+        > X: The x coordinate to move the print head to. X can be an int,float, or array
+            of shape (n,) or (n,3). If shape is (n,), then each element is used
+            sequentially as the x coordinate for each motion (each element in the array).
+            If X has shape (n,3), then each column is defined as x,y,z and each row is a
+            subsequent movement.
+        > Y: the y coordinate to move the print head to. Behaves the same as X except for
+            that only arrays of shape (n,) can be passed.
+        > Z: the z coordinate to move the print head to. Behaves the same as X except for
+            that only arrays of shape (n,) can be passed.
+        
+        '''
+
+        # checking if x input is a a single value, or an array
+        shape = np.shape(x)
+        if len(shape) == 2:
+
+            # (n,3) array x is broken into x,y,z components
+            if shape[1] == 3:
+                y = x[:,1]
+                z = x[:,2]
+                x = x[:,3]
+            else:
+                raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(shape))
 
         # create a temperary variable to store position to eventually pass to
         # hidden methods to internally record motion
@@ -277,48 +176,35 @@ class gcode():
 
         # checking if given numerical intputs are single values
         if isinstance(x,int) or isinstance(x,float) or isinstance(y,int) or isinstance(y,float) or isinstance(z,int) or isinstance(z,float):
-            # appending parameters to line of GCODE
-            if x or x == 0:
-                line.append('X' + self.settings['pos'].format(x) + ' ')
-                # updating position
-                pos[0] = x
-            if y or y == 0:
-                line.append('Y' + self.settings['pos'].format(y) + ' ')
-                # updating position
-                pos[1] = y
-            if z or z == 0:
-                line.append('Z' + self.settings['pos'].format(z) + ' ')
-                # updating position
-                pos[2] = z
 
-            # writing to memory
-            self.write(line, pos)
+            # creating an empty line of GCODE
+            line = gcode_line()
 
-           
+            # calling hidden function to do the string formatting
+            # this writes this to memory
+            self._move_format(line,pos,x,y,z)
+
             # end of move
 
         else:
-            if len(x) == len(y) and len(x) == len(z):
-                for i in range(len(x)):
-                    if x[i] or x[i] == 0:
-                        line.append('X' + self.settings['pos'].format(x[i]) + ' ')
-                        # updating position
-                        pos[0] = x[i]
-                    if y[i] or y[i] == 0:
-                        line.append('Y' + self.settings['pos'].format(y[i]) + ' ')
-                        # updating position
-                        pos[1] = y[i]
-                    if z[i] or z[i] == 0:
-                        line.append('Z' + self.settings['pos'].format(z[i]) + ' ')
-                        # updating position
-                        pos[2] = z[i]
 
-                    # writing to memory
-                    self.write(line, pos)
+            # array case
+            if len(x) == len(y) and len(x) == len(z):
+
+                # Creating GCODE line for all row in x
+                for i in range(len(x)):
+
+                    # creating line of GCODE
+                    line = gcode_line()
+                    
+                    # calling hidden function to do the string formatting
+                    self._move_format(line,pos,x[i],y[i],z[i])
+
                                                     
     # end of simple_move
 
 
+    # method that tells the print to move to X,Y,Z at the max speed
     def rapid_move(self, x=None,y=None,z=None,extrude=None,com=None):
         '''
         Parameters:
@@ -332,8 +218,8 @@ class gcode():
             that only arrays of shape (n,) can be passed.
         > Z: the z coordinate to move the print head to. Behaves the same as X except for
             that only arrays of shape (n,) can be passed.
-        > EXTRUDE:
-        > COM:
+        > EXTRUDE: The volume to extrude for this motion.... NEED MORE HERE
+        > COM: The comment to be added at the end of the lines
         '''
 
         # chacking if x input is
@@ -348,9 +234,6 @@ class gcode():
             else:
                 raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(shape))
 
-        
-        # creating line of GCODE
-        line = gcode_line('G1', com)
 
         # create a temperary variable to store position to eventually pass to
         # hidden methods to internally record motion
@@ -358,50 +241,30 @@ class gcode():
 
         # checking if given numerical intputs are single values
         if isinstance(x,int) or isinstance(x,float) or isinstance(y,int) or isinstance(y,float) or isinstance(z,int) or isinstance(z,float):
-            # appending parameters to line of GCODE
-            if x or x == 0:
-                line.append(' X' + self.settings['pos'].format(x) )
-                # updating position
-                pos[0] = x
-            if y or y == 0:
-                line.append(' Y' + self.settings['pos'].format(y))
-                # updating position
-                pos[1] = y
-            if z or z == 0:
-                line.append(' Z' + self.settings['pos'].format(z))
-                # updating position
-                pos[2] = z
-            if extrude:
-                line.append(' E' + self.settings['extrude'].format(extrude))
 
-            # determining time to move
+            # creating line of GCODE
+            line = gcode_line('G1', com)
             
+            # calling hidden function to do the string formatting
+            # which also writes to memory
+            self._move_format(line,pos,x,y,z,extrude)
             
-            # writing to memory
-            self.write(line,pos)
             # end of move
 
         else:
+            # array case, 
             if len(x) == len(y) and len(x) == len(z):
-                for i in range(len(x)):
-                    # appending parameters to line of GCODE
-                    if x[i] or x[i] == 0 :
-                        line.append(' X' + self.settings['pos'].format(x[i]) )
-                        # updating position
-                        pos[0] = x[i]
-                    if y[i] or y[i] == 0:
-                        line.append(' Y' + self.settings['pos'].format(y[i]))
-                        # updating position
-                        pos[1] = y[i]
-                    if z[i] or z[i] == 0:
-                        line.append(' Z' + self.settings['pos'].format(z[i]))
-                        # updating position
-                        pos[2] = z[i]
-                    if extrude:
-                        line.append(' E' + self.settings['extrude'].format(ext))
 
-                    # writing to memory
-                    self.write(line,pos)
+                # Creating GCODE line for all row in x
+                for i in range(len(x)):
+
+                    # creating line of GCODE
+                    line = gcode_line('G1', com)
+
+                    # calling hidden function to do the string formatting
+                    self._move_format(line,pos,
+                                      x[i],y[i],z[i],
+                                      extrude)
             else:
                 raise ValueError('Input arrays must be of same length')
 
@@ -588,12 +451,7 @@ class gcode():
     # a method that wraps other methods commonly used before any motion
     def header(self, credit=False):
 
-        # telling object that header has been set
-        self.has_head = True
-
         
-        
-
         # Writes the credits as a comment
         if credit:
             self.comment('This is GCODE generated with {} version {}'.format(NAME,VERSION))
@@ -624,7 +482,7 @@ class gcode():
             return
         else:
             # appending the line of GCODE to the vector of lines
-            if np.any(move):
+            if np.any(move) or np.any(move == 0):
                 # records motion, time to print, and position
                 self._pos_update(move)
 
@@ -634,25 +492,52 @@ class gcode():
 
         # end of write 
         return    
-         
-    
 
-    # Method to visualize the printer path 
+    # method to print the print_time attribute in a pretty format
+    # uses a helper function min2time
+    # this breaks the attribute print_time into days,hours,minutes, etc.
+    def time(self, printit=True, sec_tol=1e-1):
+        
+        '''
+        Parameters:
+
+        > PRINTIT: if true, the final string created is printed to screen and returned.
+            If false, then the string is just returned
+        > SEC_TOL: controls the precision of the seconds displayed as well as
+            whether seconds will be added at all. if the number of seconds is below
+            SEC_TOL, then it is not displayed. if more than 2 decimal places are needed
+            scientific notation is used
+        '''
+
+        # calling helper function
+        return min2time(self.print_time, printit, sec_tol)
+    # end of time
+        
+
+    # Method to visualize the printer path
+    '''
+    To Do:
+
+    > DOCUMENTATION!!!!
+    > Create more arguments for customizability 
+    '''
     def view(self, *args, backend='matplotlib', fig_title='Print Path',
              color_in_time=True, cmap='jet', give=False, **kwargs):
         
-        """ View the path given by the GCODE.
+        '''
+        Parameters:
+        
 
-        backend : str (default: 'matplotlib')
+        > BACKEND: str (default: 'matplotlib')
             The plotting backend to use, one of 'matplotlib' or 'mayavi'.
             
-        *args,**kwargs : are passed to matplotlib's pyplot.plot function
+        > *args,**kwargs : are passed to matplotlib's pyplot.plot function
         
-        fig_title : the title given to the figure. Only used is a figure is not given to plot on
+        > FIG_TITLE: the title given to the figure. Only used is a figure is not given to plot on
         
-        give : this command makes the method return the figure after the path data is
+        > GIVE : this command makes the method return the figure after the path data is
                 plotted. This has no effect when mayavi is the backend.
-        """
+        '''
 
         # checking backend input and force matplotlib if there is a mistake
         if backend != 'matplotlib' and backend != 'mayavi':
@@ -797,10 +682,6 @@ class gcode():
 
                 # end of view
                 return
-
-
-
-
             
         # mayavi 
         elif backend == 'mayavi':
@@ -820,6 +701,8 @@ class gcode():
 
             # end of view
             return
+
+
 
     
     # writes the output to a file
@@ -844,6 +727,61 @@ class gcode():
     ## Hidden methods to handle internal processes---------------------------------------
     ## ----------------------------------------------------------------------------------
 
+    # hidden method to format the GCODE move command
+    def _move_format(self, line,pos,x,y,z,speed=None,extrude=None,write=True):
+        '''
+        Parameters:
+
+        > X: The x coordinate to move the print head to. X can be an int,float, or array
+            of shape (n,) or (n,3). If shape is (n,), then each element is used
+            sequentially as the x coordinate for each motion (each element in the array).
+            If X has shape (n,3), then each column is defined as x,y,z and each row is a
+            subsequent movement.
+        > Y: the y coordinate to move the print head to. Behaves the same as X except for
+            that only arrays of shape (n,) can be passed.
+        > Z: the z coordinate to move the print head to. Behaves the same as X except for
+            that only arrays of shape (n,) can be passed.
+        > SPEED: The speed to move the print head for this motion. This input should
+            be in the same units as the attribute UNIT_SYS
+        > EXTRUDE: The volume to extrude for this motion.... NEED MORE HERE
+        > WRITE: determines whether to write the line to memory or two return the pos and
+            line instead
+        '''
+
+        # appending parameters to line of GCODE
+        if x or x == 0:
+            line.append(' X' + self.settings['pos'].format(x) )
+            # updating position
+            pos[0] = x
+        if y or y == 0:
+            line.append(' Y' + self.settings['pos'].format(y))
+            # updating position
+            pos[1] = y
+        if z or z == 0:
+            line.append(' Z' + self.settings['pos'].format(z))
+            # updating position
+            pos[2] = z
+
+        # writes the speed command
+        if speed:
+            # calls a hidden function to format the speed string
+            # and two adjust attributes
+            line.append(' F' + self._speed(speed))
+
+        # writes the extrusion command to this line
+        if extrude:
+            line.append(' E' + self.settings['extrude'].format(extrude))
+
+        # determining how to return values or to save the GCODE lines to memory
+        if write:
+            # writing to memory
+            self.write(line,pos)
+        else:
+            # returning both values
+            return line, pos
+
+
+    
     # method to format the speed command for the move functions and recording the
     # speed as an internal attribute unit_sys.
     def _speed(self, v):
@@ -860,6 +798,7 @@ class gcode():
         return self.settings['speed'].format(self.print_speed)
 
 
+    
     # method to internally record the time for motion. called in _pos_update
     def _time(self):
 
@@ -935,58 +874,3 @@ class gcode():
     # gives built in len function access to self.code
     def __len__(self):
         return self.count
-
-
-
-
-## Helper functions ------------------------------------------------------------------
-
-# converts milimeters per second in GCODE standard milimeters per minute
-def mmps2mmpm(v=1):
-    return v*60
-# converting milimeters per minute in GCODE standard milimeters per second
-def mmpm2mmps(v=1):
-    return v/60
-# convert milimeters to inchs
-def in2mm(v=1):
-    return v*25.4
-# convert inches to milimeters
-def mm2in(v=1):
-    return v/25.4
-# convert units of inches per second to inches per minute
-def inps2inpm(v=1):
-    return v*60
-# converting inches per minute in GCODE standard inches per second
-def inpm2inps(v=1):
-    return v/60
-# convert minutes to seconds
-def min2sec(t=1):
-    return t*60
-# convert seconds to minutes
-def sec2min(t=1):
-    return t/60
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
