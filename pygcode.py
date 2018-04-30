@@ -37,8 +37,8 @@ class gcode():
         # number of lines written
         self.count = 0
 
-        # creating motion history
-        self.history = vec2d(shape=(0,3))
+        # creating motion history with preallocated vector
+        self.history = vec2d(shape=(500,3))
 
         # records the current and previous position
         self.current_pos = np.zeros(3)
@@ -519,7 +519,10 @@ class gcode():
     To Do:
 
     > DOCUMENTATION!!!!
-    > Create more arguments for customizability 
+    > Create more arguments for customizability
+    > new type of visualization! one color to specify when extrude
+        another color not with a legend
+    > break this into several methods
     '''
     def view(self, *args, backend='matplotlib', fig_title='Print Path',
              color_in_time=True, cmap='jet', give=False, **kwargs):
