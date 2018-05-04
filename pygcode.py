@@ -525,7 +525,7 @@ class gcode():
     > break this into several methods
     '''
     def view(self, *args, backend='matplotlib', fig_title='Print Path',
-             color_in_time=True, cmap='jet', give=False, **kwargs):
+             color_in_time=True, cmap='jet', give=False, plot_style='default',**kwargs):
         
         '''
         Parameters:
@@ -562,8 +562,11 @@ class gcode():
             if color_in_time:
                 from mpl_toolkits.mplot3d import Axes3D
                 import matplotlib.pyplot as plt
-                #from matplotlib import cm
+                from matplotlib import style
 
+                # setting matplotlib plot style
+                style.use(plot_style)
+                
                 # creating figure
                 fig = plt.figure()
                 ax = fig.gca(projection='3d')
@@ -704,6 +707,97 @@ class gcode():
 
             # end of view
             return
+
+
+
+
+    # a function to wrap the stuff needed for a live graph takes a function that returns a
+    # X and Y array to be plotted, a single input i to that function is required
+    def live_view(self, *args, refresh=100, plot_style='default', **kwargs):
+
+        '''
+        Parameters:
+
+        > ANIMATE:
+        > COLOR:
+        > REFRESH:
+        > PLOT_STYLE:
+        '''
+
+        # need imports
+        import matplotlib.animation as animation
+        from mpl_toolkits.mplot3d import Axes3D
+        import matplotlib.pyplot as plt
+        from matplotlib import style
+        
+        # maplotlib style to use
+        style.use(plot_style)
+
+        # creating new figure to plot on
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_aspect('equal')
+
+        
+        # getting motion history
+        X = self.history[:, 0]
+        Y = self.history[:, 1]
+        Z = self.history[:, 2]
+
+        # Keeps aspect ratio square
+        # http://stackoverflow.com/questions/13685386
+        max_range = np.array([X.max()-X.min(),
+                              Y.max()-Y.min(),
+                              Z.max()-Z.min()]).max() / 2.0
+
+        mean_x = X.mean()
+        mean_y = Y.mean()
+        mean_z = Z.mean()
+        xlim = (mean_x - max_range, mean_x + max_range)
+        ylim = (mean_y - max_range, mean_y + max_range)
+        zlim = (mean_z - max_range, mean_z + max_range)
+
+        # labeling figure axes and title
+        xlab = 'X ({})'.format(self.unit_sys)
+        ylab = 'Y ({})'.format(self.unit_sys)
+        zlab = 'Z ({})'.format(self.unit_sys)
+
+        # creates the animation
+        def animate_loop(i):
+
+            # Makes loop cycle so that it restarts after it's full length is reached
+            i = i % (self.count - 1)
+
+            # calls the animate function
+            x = self.history[0:i,0]
+            y = self.history[0:i,1]
+            z = self.history[0:i,2]
+            
+            # cleans old drawing off screen. computationally light
+            ax.clear()
+            
+            # redraws stuff on to plot
+            ax.plot(x,y,z, *args,**kwargs)
+
+            # setting axis sizes
+            ax.set_xlim(xlim[0], xlim[1])
+            ax.set_ylim(ylim[0], ylim[1])
+            ax.set_zlim(zlim[0], zlim[1])
+
+            # labeling axes
+            ax.set_xlabel(xlab)
+            ax.set_ylabel(ylab)
+            ax.set_zlabel(zlab)
+            
+
+        # animation function from matplotlib
+        # arguments are where to draw, which drawing function to use, and how often to redraw
+        ani = animation.FuncAnimation(fig, animate_loop, interval=refresh)
+
+        # calling figure to screen
+        plt.show()
+        return
+
 
 
 
