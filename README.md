@@ -1,8 +1,8 @@
-# pygcode
+# gcody
 
-Pygcode is a python wrapper for GCODE. It gives common programming language functionality to GCODE as well as some convenient debugging tools. 
-This is a very early draft of pygcode and it is intended for general writing of GCODE, not printer specific code. 
-Pygcode was heavily inspired by [mecode](https://github.com/jminardi/mecode).
+Gcody is a python wrapper for GCODE. It gives common programming language functionality to GCODE as well as some convenient debugging tools. 
+This is a very early draft of gcody and it is intended for general writing of GCODE, not printer specific code. 
+Gcody was heavily inspired by [mecode](https://github.com/jminardi/mecode).
 
 
 ### Basics:
@@ -10,8 +10,8 @@ Pygcode was heavily inspired by [mecode](https://github.com/jminardi/mecode).
 <python code example>
 
 ```python
-# pyGCODE example creating a serpentine pattern
-from pygcode import gcode
+# gcody example creating a serpentine pattern
+from gcody import gcode
 
 # creating parameters
 distance = 10
@@ -23,7 +23,7 @@ g = gcode()
 # writes the GCODE command to use relative coordinates
 # this changes how position is recorded internally and will be displayed differently
 # when g.view is called below()
-# abs_coords is the default setting for gcode and is the default for pygcode as well
+# abs_coords is the default setting for gcode and is the default for gcody as well
 g.rel_coords()
 
 
@@ -80,17 +80,19 @@ X-10.000000
 <Print head image>
 
 ![Printer Path](test_path.png)
+![Snake Gif](snake.gif)
 
 
 ### Dependancies:
-* [pyvector](https://github.com/rtZamb/pyvector) which requires numpy
-
+* [pyvector](https://github.com/rtZamb/pyvector)
+* Numpy
+	
 
 
 ### To Do:
 * Add clockwise motion commands
+* Add in other GCODE commands
 * Add more complex combinations of move
-* Add in other printer setting commands
 * Take requests for features!
 
 
