@@ -89,6 +89,8 @@ X-10.000000
 ### Dependancies:
 * [pyvector](https://github.com/rtZamb/pyvector)
 * Numpy
+* Matplotlib
+* pillow, ImageMagic, of FFmpeg as helpers to matplotlib to save videos
 	
 
 
