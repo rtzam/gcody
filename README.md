@@ -47,6 +47,9 @@ for i in range(1,cycles):
 # defaults to a 4D plot with time represented as color
 g.view() # passes pyplot.plot argument as args and kwargs
 
+# creates a gif, passing args to pyplot.plot.
+g.live_view('b',save_file='snake.gif', show=False)
+
 # saves the GCODE to a file
 g.save('snake') # outputs file 'snake.gcode'
 g.save('snake','txt') # outputs file 'snake.txt'
