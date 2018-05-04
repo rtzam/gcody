@@ -1,5 +1,5 @@
 '''
-Module pygcode written by Ryan Zambrotta
+Class gcode written by Ryan Zambrotta
 '''
 
 # imports -----------------------------------------------------------------------
@@ -8,16 +8,27 @@ from gcode_line import gcode_line
 from gcode_settings import gcode_settings
 from helper import *
 
-## Constants ------------------------------------------------------------------------
-NAME = 'pygcode' # name of module
-VERSION = '0.1.5' # Version of pyGCODE
+
+# Contains names of all the method in gcode
+METHODS = {'G0':'rapid move','G1':'move','G20':'use in','G21':'use mm','F':'set speed',
+              'G90':'abs coords','G91':'rel coords','E':'extrude','G28':'go home',
+              'M790':'new layer',';':'comment'}
+
+
 
 
 # Main GCODE class -------------------------------------------------------------
 
 class gcode():
 
-    def __init__(self, debug_mode=False, settings=None):
+    def __init__(self, debug_mode=False, settings=None, preallocate=500):
+        '''
+        Parameters:
+
+        > DEBUG_MOVE:
+        > SETTINGS:
+        > PREALLOCATE:
+        '''
 
         # settings
         if not settings:
@@ -38,7 +49,7 @@ class gcode():
         self.count = 0
 
         # creating motion history with preallocated vector
-        self.history = vec2d(shape=(500,3))
+        self.history = vec2d(shape=(int(preallocate),3))
 
         # records the current and previous position
         self.current_pos = np.zeros(3)
@@ -60,10 +71,16 @@ class gcode():
         self.print_time = 0 # units of minutes
 
         # internal recording of time at each motion
-        self.t = vec(length=500)
+        self.t = vec(length=int(preallocate))
 
         # recording the print speed
         self.print_speed = 0
+
+        # Contains names of all the method in GCODE
+        self.gcode_methods = {'G0':self.rapid_move,'G1':self.move,'G20':self.use_in,
+                              'G21':self.use_mm,'G28':self.go_home,'G90':self.abs_coords,
+                              'G91':self.rel_coords,'E':self.extrude,'F':self.speed,
+                              'M790':self.new_layer,';':self.comment}
 
         # end of init
         return
@@ -446,7 +463,8 @@ class gcode():
             self.write(gcode_line())
 
         # end of blank
-        return 
+        return
+        
     
     # a method that wraps other methods commonly used before any motion
     def header(self, credit=False):
@@ -964,9 +982,10 @@ class gcode():
         # creates a print object and returns that
         return ''.join(self.code)
 
-    # gives [] indexing access to the gcode vector
+    # gives [] indexing gives access to the gcode methods as identified by the
+    # actual GCODE commands. This makes reading GCODE easier
     def __getitem__(self, index):
-        return self.code[index]
+        return self.gcode_methods[index]
 
     # gives built in len function access to self.code
     def __len__(self):
