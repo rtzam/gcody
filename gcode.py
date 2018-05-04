@@ -731,11 +731,13 @@ class gcode():
 
     # a function to wrap the stuff needed for a live graph takes a function that returns a
     # X and Y array to be plotted, a single input i to that function is required
-    def live_view(self, *args, refresh=100, plot_style='default', **kwargs):
+    def live_view(self, *args, save_file=None, writer='pillow',refresh=100,
+                  plot_style='default',show=True,**kwargs):
 
         '''
         Parameters:
 
+        > SAVE_FILE:
         > ANIMATE:
         > COLOR:
         > REFRESH:
@@ -812,8 +814,16 @@ class gcode():
         # arguments are where to draw, which drawing function to use, and how often to redraw
         ani = animation.FuncAnimation(fig, animate_loop, interval=refresh)
 
+        # if a save file is passed, the animation is saved to the file
+        if save_file:
+            ani.save(save_file, writer=writer) # saves to an mp4 file
+            
+
         # calling figure to screen
-        plt.show()
+        if show:
+            plt.show()
+
+        # end of the live_view method
         return
 
 
