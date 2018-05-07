@@ -25,7 +25,15 @@ class gcode_line():
 
     # method to append items to line
     def append(self, text):
-        self.line += str(text)
+        '''
+        Parameters:
+
+        > TEXT: the text to add to the end of the line.
+
+        * Notes: each command is added with a space
+        '''
+        
+        self.line += ' ' + str(text)
 
 
     # method that adds the comment to the line once all text has been added
