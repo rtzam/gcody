@@ -4,6 +4,7 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import style
+from numpy import array
 
 
 def plot3(history, *args, fig_title=None, give=False,plot_style='default',
@@ -37,7 +38,8 @@ def plot3(history, *args, fig_title=None, give=False,plot_style='default',
     if make_square:
         # Keeps aspect ratio square
         # http://stackoverflow.com/questions/13685386
-        max_range = np.array([X.max()-X.min(),
+        # numpy array
+        max_range = array([X.max()-X.min(),
                               Y.max()-Y.min(),
                               Z.max()-Z.min()]).max() / 2.0
 
@@ -160,7 +162,8 @@ def color_view(history, time, *args, cmap='jet', axis_label=None, fig_title=None
 
     # Keeps aspect ratio square
     # http://stackoverflow.com/questions/13685386
-    max_range = np.array([X.max()-X.min(),
+    # numpy array
+    max_range = array([X.max()-X.min(),
                           Y.max()-Y.min(),
                           Z.max()-Z.min()]).max() / 2.0
 
@@ -198,7 +201,7 @@ def color_view(history, time, *args, cmap='jet', axis_label=None, fig_title=None
 # a function to wrap the stuff needed for a live graph takes a function that returns a
 # X and Y array to be plotted, a single input i to that function is required
 def live_view(animate, *args, loop=60, ax_lim=None, ax_label=None,
-              fig_title=None, save_file=None, writer='pillow',refresh=100,
+              fig_title=None, save_file=None, writer='pillow',interval=100,
               plot_style='default',show=True,**kwargs):
 
     '''
@@ -234,7 +237,8 @@ def live_view(animate, *args, loop=60, ax_lim=None, ax_label=None,
     def animate_loop(i):
 
         # Makes loop cycle so that it restarts after it's full length is reached
-        i = i % (loop - 1)
+        if loop:
+            i = i % (loop - 1)
 
         # calls the animate function
         x,y,z = animate(i) 
@@ -264,7 +268,7 @@ def live_view(animate, *args, loop=60, ax_lim=None, ax_label=None,
 
     # animation function from matplotlib
     # arguments are where to draw, which drawing function to use, and how often to redraw
-    ani = animation.FuncAnimation(fig, animate_loop, interval=refresh)
+    ani = animation.FuncAnimation(fig, animate_loop, interval=interval)
 
     # if a save file is passed, the animation is saved to the file
     if save_file:
