@@ -30,10 +30,17 @@ class gcode_line():
 
         > TEXT: the text to add to the end of the line.
 
-        * Notes: each command is added with a space
+        * Notes: each command is added with a space if the line is not empty
         '''
+
+        # checking to see if line is empty before adding space to append
+        if self.line = '':
+            self.line += str(text)
+
+        # else a space is added to seperate words
+        else:
+            self.line += ' ' + str(text)
         
-        self.line += ' ' + str(text)
 
 
     # method that adds the comment to the line once all text has been added
