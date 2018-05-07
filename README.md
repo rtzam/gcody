@@ -24,15 +24,13 @@ g = gcode()
 # this changes how position is recorded internally and will be displayed differently
 # when g.view is called below()
 # abs_coords is the default setting for gcode and is the default for gcody as well
-g.rel_coords()
+g.rel_move()
 
 
 # setting the speed for the print head
 # input is in per second units and is converted to per minute
-g.speed(10, '10 mmps motion') 
-
 # moves the print head back and forth in x
-g.move(distance, com='Moves head 10 in x')
+g.move(distance, speed=10, com='Moves head 10 in x')
 
 
 # moves the print head back and forth in x
