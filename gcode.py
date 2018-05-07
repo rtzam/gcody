@@ -79,10 +79,12 @@ class gcode():
 
         # Contains names of all the method in GCODE
         self.gcode_methods = {'G0':self.rapid_move,'G1':self.move,'G4':self.dwell,
+                              'G10':self.retract,'G11':self.unretract,
                               'G20':self.use_in,'G21':self.use_mm,'G28':self.go_home,
-                              'G90':self.abs_move,'G91':self.rel_move,
-                              'M83':self.abs_extrude,'M82':self.rel_extrude,
-                              'M790':self.new_layer,';':self.comment}
+                              'G90':self.abs_move,'G91':self.rel_move,'G92':self.set_pos,
+                              'M83':self.abs_extrude,'M82':self.rel_extrude,'M106':self.fan,
+                              'M107':self.fan_off,
+                              'M790':self.new_layer,';':self.comment,'\n':self.blank}
 
         # end of init
         return
@@ -133,8 +135,11 @@ class gcode():
 
         # create a temperary variable to store position to eventually pass to
         # hidden methods to internally record motion
-        pos = np.zeros(3)
-
+        if self.coords == 'abs':
+            pos = self.current_pos.copy()
+        else:
+            pos = np.zeros(3)
+        
         # checking if given numerical intputs are single values
         if isinstance(x,int) or isinstance(x,float) or isinstance(y,int) or isinstance(y,float) or isinstance(z,int) or isinstance(z,float):
 
@@ -192,7 +197,10 @@ class gcode():
 
         # create a temperary variable to store position to eventually pass to
         # hidden methods to internally record motion
-        pos = np.zeros(3)
+        if self.coords == 'abs':
+            pos = self.current_pos.copy()
+        else:
+            pos = np.zeros(3)
 
         # checking if given numerical intputs are single values
         if isinstance(x,int) or isinstance(x,float) or isinstance(y,int) or isinstance(y,float) or isinstance(z,int) or isinstance(z,float):
@@ -225,11 +233,11 @@ class gcode():
 
 
     # method that tells the print to move to X,Y,Z at the max speed
-    def rapid_move(self, x=None,y=None,z=None,extrude=None,com=None):
+    def rapid_move(self, x=None,y=None,z=None,speed=None,extrude=None,com=None):
         '''
         Parameters:
 
-        See move except for speed which is automatically set here
+        See move
         '''
 
         # chacking if x input is
@@ -247,7 +255,12 @@ class gcode():
 
         # create a temperary variable to store position to eventually pass to
         # hidden methods to internally record motion
-        pos = np.zeros(3)
+        if self.coords == 'abs':
+            pos = self.current_pos.copy()
+        # This if statement is needed to adjust internal recording of position given rel
+        # vs. abs coord system
+        else:
+            pos = np.zeros(3)
 
         # checking if given numerical intputs are single values
         if isinstance(x,int) or isinstance(x,float) or isinstance(y,int) or isinstance(y,float) or isinstance(z,int) or isinstance(z,float):
@@ -257,7 +270,7 @@ class gcode():
             
             # calling hidden function to do the string formatting
             # which also writes to memory
-            self._move_format(line,pos,x,y,z,extrude)
+            self._move_format(line,pos,x,y,z,speed,extrude)
             
             # end of move
 
@@ -274,7 +287,7 @@ class gcode():
                     # calling hidden function to do the string formatting
                     self._move_format(line,pos,
                                       x[i],y[i],z[i],
-                                      extrude)
+                                      speed,extrude)
             else:
                 raise ValueError('Input arrays must be of same length')
 
@@ -309,7 +322,7 @@ class gcode():
             self.write(line, self.current_pos, time/60)
             return
 
-        elif:
+        elif milisec:
             # generating length of time
             line.append('P{}'.format(milisec))
             
@@ -319,6 +332,49 @@ class gcode():
             return
         else:
             raise RuntimeError('No time given to dwell')
+
+    # method tells printer to retract the print head
+    def retract(self, short=None, com='Retracting Head'):
+        '''
+        Parameters:
+
+        > SHORT: 
+        '''
+
+        # writing GCODE line
+        line = gcode_line('G10', com)
+
+        # Adding the parameter to the retract statement
+        if short == 0:
+            line.append('S0')
+        elif short == 1:
+            line.append('S1')
+            
+
+        # technically this moves the head so i need to reserach this more
+        self.write(line)
+        return
+
+    def unretract(self, short=None, com='Unretracting Head'):
+        '''
+        Parameters:
+
+        > SHORT:
+        '''
+
+        # writing GCODE line
+        line = gcode_line('G11', com)
+
+        # Adding the parameter to the retract statement
+        if short == 0:
+            line.append('S0')
+        elif short == 1:
+            line.append('S1')
+            
+
+        # technically this moves the head so i need to reserach this more
+        self.write(line)
+        return
     
         
 
@@ -345,85 +401,6 @@ class gcode():
         # writing to memory
         self.write(line)
         return
-
-
-    # method to give command to tell printer to use absolute coordinates
-    # to move
-    def abs_move(self, com='Use Absolute motion'):
-
-        # create gcode line with command and comment
-        line = gcode_line('G90', com)
-
-        # internally recording coordinate system
-        self.coords = 'abs'
-
-        # writing line of gcode to memory
-        self.write(line)
-        return
-    
-
-    # method to give command to tell printer to use relative coordinates
-    # to move
-    def rel_move(self, com='Use Relative Motion'):
-
-        # create gcode line with command and comment
-        line = gcode_line('G91', com)
-
-        # internally recording coordinate system
-        self.coords = 'rel'
-
-        # writing line of gcode to memory
-        self.write(line)
-        return
-
-    # Method to tell printer to use absolute extrusion
-    def abs_extrude(self, com='Absolute Extrusion Mode'):
-
-        # create gcode command
-        line = gcode_line('M83', com)
-
-        # should I record the volume used?
-        
-        # writing line gcode to memory
-        self.write(line)
-    
-
-    # Method to tell printer to use relative extrusion
-    def rel_extrude(self, com='Relative Extrusion Mode'):
-
-        # create gcode command
-        line = gcode_line('M82', com)
-
-        # should I record the volume used?
-        
-        # writing line gcode to memory
-        self.write(line)
-        
-
-    # adds a new layer
-    def new_layer(self, com='announce new layer'):
-        line = gcode_line('M790', com)
-
-        # writing to memory
-        self.write(line)
-        return
-
-    # end of new_layer
-    
-        
-    # writes command for comments
-    def comment(self, com):
-        '''
-        Parameters
-
-        > COM: a string to be written as a comment
-        '''
-        line = gcode_line(comment=com)
-
-        # writing to memory
-        self.write(line)
-        return
-        # end of comment
 
     # command that moves specific printer axes to their home position
     def go_home(self, safe=True, x=None,y=None,z=None,com='Going to home position'):
@@ -477,6 +454,144 @@ class gcode():
             self.write(line, -self.current_pos)
             # end of go home
         return
+
+
+    # method to give command to tell printer to use absolute coordinates
+    # to move
+    def abs_move(self, com='Use Absolute motion'):
+
+        # create gcode line with command and comment
+        line = gcode_line('G90', com)
+
+        # internally recording coordinate system
+        self.coords = 'abs'
+
+        # writing line of gcode to memory
+        self.write(line)
+        return
+    
+
+    # method to give command to tell printer to use relative coordinates
+    # to move
+    def rel_move(self, com='Use Relative Motion'):
+
+        # create gcode line with command and comment
+        line = gcode_line('G91', com)
+
+        # internally recording coordinate system
+        self.coords = 'rel'
+
+        # writing line of gcode to memory
+        self.write(line)
+        return
+
+    # method to reset current position
+    def set_pos(self, x=None,y=None,z=None,extrude=None,com=None):
+        '''
+        This method does not do anything to the gcode class
+        http://reprap.org/wiki/G-code#G92:_Set_Position
+        
+        Parameters:
+        '''
+
+        # creating GCODE line
+        line = gcode_line('G92', com)
+
+        # appending parameters to line of GCODE
+        if x or x == 0:
+            line.append('X' + self.settings['pos'].format(x) )
+            
+        if y or y == 0:
+            line.append('Y' + self.settings['pos'].format(y))
+            
+        if z or z == 0:
+            line.append('Z' + self.settings['pos'].format(z))
+
+        # writes the extrusion command to this line
+        if extrude:
+            line.append('E' + self.settings['extrude'].format(extrude))
+
+        # writing to memory
+        self.write(line)
+        
+        return
+
+
+    
+
+    # Method to tell printer to use absolute extrusion
+    def abs_extrude(self, com='Absolute Extrusion Mode'):
+
+        # create gcode command
+        line = gcode_line('M83', com)
+
+        # should I record the volume used?
+        
+        # writing line gcode to memory
+        self.write(line)
+    
+
+    # Method to tell printer to use relative extrusion
+    def rel_extrude(self, com='Relative Extrusion Mode'):
+
+        # create gcode command
+        line = gcode_line('M82', com)
+
+        # should I record the volume used?
+        
+        # writing line gcode to memory
+        self.write(line)
+
+    # Method to control the Printer fan
+    def fan(self, com=None,**kwargs):
+        '''
+        Parameters:
+        
+        '''
+
+        # creating GCODE line
+        line = gcode_line('M106', com)
+
+        # formatting line and saving it to memory
+        self._control_fan(line, **kwargs)
+        
+        return
+
+    # Method to turn fan off. It is depreciated in many printers
+    def fan_off(self, com=None):
+        '''
+        Parameters
+        '''
+
+        # writing a single line to memory
+        self.write(gcode_line('M107',com))
+        
+        return
+
+    # adds a new layer
+    def new_layer(self, com='announce new layer'):
+        line = gcode_line('M790', com)
+
+        # writing to memory
+        self.write(line)
+        return
+
+    # end of new_layer
+    
+        
+    # writes command for comments
+    def comment(self, com):
+        '''
+        Parameters
+
+        > COM: a string to be written as a comment
+        '''
+        line = gcode_line(comment=com)
+
+        # writing to memory
+        self.write(line)
+        return
+        # end of comment
 
 
     # method that creates blank lines on the GCODE file
@@ -640,6 +755,8 @@ class gcode():
         # defining the update function to needed by the plotting function
         def update(i):
             return self.history[0:i,0], self.history[0:i,1], self.history[0:i,2]
+
+        live_view(update, *args, **kwargs)
 
 
         return
@@ -836,6 +953,56 @@ class gcode():
         self._time(time)
 
         return
+
+    # Method to control the fan parameters
+    def _control_fan(self,line,fan_n=None, fan_speed=None, invert_sig=None, fan_freq=None,
+                     set_min_speed=None, blip_time=None, select_heaters=None, restore_speed=None,
+                     set_trig_temp=None, write=True):
+
+        '''
+        Parameters:
+
+        See http://reprap.org/wiki/G-code#M106:_Fan_On
+        '''
+        
+        if fan_n or fan_n==0:
+            line.append('P' + str(fan_n))
+
+        if fan_speed or fan_speed == 0:
+            line.append('S' + str(fan_speed))
+
+        if invert_sig:
+            line.append('I' + str(invert_sig))
+
+        if fan_freq or fan_freq == 0:
+            line.append('F' + str(fan_freq))
+
+        if set_min_speed or set_min_speed==0:
+            line.append('L' + str(set_min_speed))
+
+        if blip_time or blip_time == 0:
+            line.append('B' + str(blip_time))
+
+        if select_heaters or select_heaters==0:
+            line.append('H' + str(select_heaters))
+
+        if restore_speed or restore_speed==0:
+            line.append('R' + str(restore_speed))
+
+        if set_trig_temp:
+            line.append('T' + str(set_trig_temp))
+
+        # determining how to return the values
+        if write:
+            self.write(line)
+            return
+        else:
+            return line
+            
+            
+
+
+    
 
     # functions that give the printing options of the GCODE 
     def __repr__(self):
