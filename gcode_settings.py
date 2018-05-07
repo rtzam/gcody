@@ -4,8 +4,8 @@
 class gcode_settings():
 
     # init method contains all the default options
-    def __init__(self, pos_str='{:0.6f}',speed_str='{}',
-                 extrude_str='{:0.6f}'):
+    def __init__(self, pos_str='{:0.4f}',speed_str='{:0.0f}',
+                 extrude_str='{:0.4f}'):
 
         # assigning values to memory
         self.lib = {'pos':pos_str, 'extrude':extrude_str, 'speed':speed_str}
