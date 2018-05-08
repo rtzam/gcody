@@ -1,6 +1,9 @@
 # User files to ignore
-test_code.py
 pyvector.py
+snake.txt
+snake.gcode
+elefante.gcode
+gcode_old.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
