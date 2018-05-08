@@ -105,7 +105,7 @@ elefante.cbar_view() # rendering all the colors can a while
 elefante.slide_view('r')
 ```
 
-![elefante real](demo/elefante_model.png)
+![elefante real](demo/elefante_model.PNG)
 ![elefante color](demo/elefante.png)
 ![elefante slider](demo/elefante_slide.png)
 
