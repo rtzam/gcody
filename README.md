@@ -1,7 +1,7 @@
 # gcody
 
-Gcody is a python wrapper for GCODE. It gives common programming language functionality to GCODE as well as several visualization tools. 
-This is an early draft of gcody and it is intended for general writing of GCODE, not printer specific code. 
+Gcody is a python wrapper for GCODE. It gives common programming language functionality to GCODE as well as several visualization tools.
+This is an early draft of gcody and it is intended for general writing of GCODE, not printer specific code.
 Gcody was inspired by [mecode](https://github.com/jminardi/mecode).
 
 
@@ -55,9 +55,9 @@ g.save('snake','txt') # outputs file 'snake.txt'
 
 The output GCODE is:
 ```GCODE
-G91 ; use relative coordinates 
-F600 ; 10 mmps motion 
-G1 X10.000000 ; Moves head 10 in x 
+G91 ; use relative coordinates
+F600 ; 10 mmps motion
+G1 X10.000000 ; Moves head 10 in x
 Y10.000000  
 X-10.000000  
 Y10.000000  
@@ -105,7 +105,7 @@ elefante.cbar_view() # rendering all the colors can a while
 elefante.slide_view('r')
 ```
 
-![elefante real](demo/elefante_model.PNG)
+<img src="demo/elefante_model.PNG" width="500">
 ![elefante color](demo/elefante.png)
 ![elefante slider](demo/elefante_slide.png)
 
@@ -116,7 +116,7 @@ elefante.slide_view('r')
 * Numpy
 * Matplotlib
 * pillow, ImageMagic, of FFmpeg as helpers to matplotlib to save videos
-	
+
 
 
 ### To Do:
@@ -124,22 +124,3 @@ elefante.slide_view('r')
 * Add in other GCODE commands
 * Add more complex combinations of move
 * Take requests for features!
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
