@@ -34,7 +34,7 @@ class gcode_line():
         '''
 
         # checking to see if line is empty before adding space to append
-        if self.line = '':
+        if self.line == '':
             self.line += str(text)
 
         # else a space is added to seperate words
