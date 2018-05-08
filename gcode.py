@@ -698,15 +698,11 @@ class gcode():
         another color not with a legend
     > break this into several methods
     '''
-    def view(self, *args, backend='matplotlib', fig_title='Print Path',
-             give=False, plot_style='default',**kwargs):
+    def view(self, *args, fig_title='Print Path',**kwargs):
         
         '''
         Parameters:
         
-
-        > BACKEND: str (default: 'matplotlib')
-            The plotting backend to use, one of 'matplotlib' or 'mayavi'.
             
         > *args,**kwargs : are passed to matplotlib's pyplot.plot function
         
@@ -716,22 +712,51 @@ class gcode():
                 plotted. This has no effect when mayavi is the backend.
         '''
 
+        # generating labels for the axes
+        ax_labels = ['X ({})'.format(self.unit_sys),'Y ({})'.format(self.unit_sys),
+                     'Z ({})'.format(self.unit_sys)]
+        
         # function call from module visual
-        plot3(self.history.data(), *args, **kwargs)
+        plot3(self.history.data(), *args, title=fig_title,
+              axis_label=ax_labels, **kwargs)
 
 
         return
 
 
     # method that has a colorbar to parameterize the time of the print
-    def cbar_view(self, *args, **kwargs):
+    def cbar_view(self, *args, fig_title='Printer Path', **kwargs):
         '''
         Parameters:
+
+        see visual.py color_view for all arguments. Some are defined here. Still working on it
         
         '''
 
+        # generating labels
+
+        # generating labels for the axes
+        ax_labels = ['X ({})'.format(self.unit_sys),'Y ({})'.format(self.unit_sys),
+                     'Z ({})'.format(self.unit_sys)]
+        
+        # four color bar ticks
+        colorbar_ticks = [0, self.t[-1]/3, 2*self.t[-1]/3, self.t[-1]]
+
+        # generating the colorbar tick labels
+        colorbar_tick_labels = ['0']
+
+        # generating the labels by iterative over the ticks and converting them to strings
+        for i in colorbar_ticks[1:]:
+            colorbar_tick_labels.append('{:0.2f}'.format(i))
+
+        # colorbar label
+        colorbar_label = 'Time (min)'
+            
+        
         # function call from module visual
-        color_view(self.history.data(), self.t.data(), *args, **kwargs)
+        color_view(self.history.data(), self.t.data(), *args, fig_title=fig_title,
+                   colorbar_ticks=colorbar_ticks, colorbar_tick_labels=colorbar_tick_labels,
+                   colorbar_label=colorbar_label, axis_label=ax_labels,**kwargs)
         
         
         
@@ -739,37 +764,108 @@ class gcode():
 
     # a function to wrap the stuff needed for a live graph takes a function that returns a
     # X and Y array to be plotted, a single input i to that function is required
-    def animated(self, *args, save_file=None, writer='pillow',refresh=100,
-                  plot_style='default',show=True,**kwargs):
+    def animated(self, *args, fig_title='Print Path',**kwargs):
 
         '''
         Parameters:
 
-        > SAVE_FILE:
-        > ANIMATE:
-        > COLOR:
-        > REFRESH:
-        > PLOT_STYLE:
+        See visual.py Some arguments are defined here though. Working on it still
+
+        Defined here: ax_label, ax_lim, fig_title, loop
         '''
 
         # defining the update function to needed by the plotting function
         def update(i):
             return self.history[0:i,0], self.history[0:i,1], self.history[0:i,2]
 
-        live_view(update, *args, **kwargs)
+
+        # setting additional arguments
+        # generating labels for the axes
+        ax_labels = ['X ({})'.format(self.unit_sys),'Y ({})'.format(self.unit_sys),
+                     'Z ({})'.format(self.unit_sys)]
+
+
+        # getting motion history
+        X = self.history[:, 0]
+        Y = self.history[:, 1]
+        Z = self.history[:, 2]
+
+
+        # Keeps aspect ratio square but can be computationally expensive for large GCODE
+        # http://stackoverflow.com/questions/13685386
+        # numpy array
+        max_range = array([X.max()-X.min(),
+                              Y.max()-Y.min(),
+                              Z.max()-Z.min()]).max() / 2.0
+
+        mean_x = X.mean()
+        mean_y = Y.mean()
+        mean_z = Z.mean()
+
+        # generating the axis limits
+        ax_lim = [mean_x - max_range, mean_x + max_range,
+                  mean_y - max_range, mean_y + max_range,
+                  mean_z - max_range, mean_z + max_range]
+
+        
+        
+        
+        # calling function from visual.py
+        live_view(update, *args, ax_label=ax_labels, ax_lim=ax_lim,
+                  fig_title=fig_title, loop=len(self.t), **kwargs)
 
 
         return
 
     
     # method that has a slider on the bottom of the figure to animate the print path
-    def slide_view(self, *args, **kwargs):
+    def slide_view(self, *args, fig_title='Printer Path', **kwargs):
 
         # defining the update function to needed by the plotting function
         def update(i):
-            return self.history[0:int(i),0], self.history[0:int(i),1], self.history[0:int(i),2]
+            # when i == self.t[-1], argument == len(self.t)
+            return self.history[0:int(i*len(self.t)/self.t[-1]),0], self.history[0:int(i*len(self.t)/self.t[-1]),1], self.history[0:int(i*len(self.t)/self.t[-1]),2]
 
-        slider_view(update, *args,**kwargs)
+        # defining labels:
+
+        # setting additional arguments
+        # generating labels for the axes
+        ax_labels = ['X ({})'.format(self.unit_sys),'Y ({})'.format(self.unit_sys),
+                     'Z ({})'.format(self.unit_sys)]
+
+
+        # getting motion history
+        X = self.history[:, 0]
+        Y = self.history[:, 1]
+        Z = self.history[:, 2]
+
+
+        # Keeps aspect ratio square but can be computationally expensive for large GCODE
+        # http://stackoverflow.com/questions/13685386
+        # numpy array
+        max_range = array([X.max()-X.min(),
+                              Y.max()-Y.min(),
+                              Z.max()-Z.min()]).max() / 2.0
+
+        mean_x = X.mean()
+        mean_y = Y.mean()
+        mean_z = Z.mean()
+
+        # generating the axis limits
+        ax_lim = [mean_x - max_range, mean_x + max_range,
+                  mean_y - max_range, mean_y + max_range,
+                  mean_z - max_range, mean_z + max_range]
+
+
+        # generating the slider labels
+        slider_label = 'Time (min)'
+        slider_range = [0, self.t[-1]]
+        slider_dx = self.t[-1]/len(self.t)
+
+        # calling function from visual.py
+        slider_view(update, *args ,slide_label=slider_label, slide_range=slider_range,
+                    ax_lim=ax_lim, ax_label=ax_labels, fig_title=fig_title, slide_dx=slider_dx,
+                    **kwargs)
         
         return
 
