@@ -106,6 +106,7 @@ elefante.slide_view('r')
 ```
 
 <img src="demo/elefante_model.PNG" width="500">
+
 ![elefante color](demo/elefante.png)
 ![elefante slider](demo/elefante_slide.png)
 
