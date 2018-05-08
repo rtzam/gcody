@@ -6,8 +6,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import style
 from numpy import array
 
-
-def plot3(history, *args, fig_title=None, give=False,plot_style='default',
+# A function that generates a 3d line plot given a matrix of values
+def plot3(history, *args, title=None, give=False,plot_style='default',
          axis_label=None, make_square=True, **kwargs):
         
     '''
@@ -20,6 +20,9 @@ def plot3(history, *args, fig_title=None, give=False,plot_style='default',
     > GIVE : this command makes the method return the figure after the path data is
             plotted.
     '''
+
+    # setting style
+    style.use(plot_style)
 
     # creating figure
     fig = plt.figure()
@@ -35,6 +38,7 @@ def plot3(history, *args, fig_title=None, give=False,plot_style='default',
     # Plots the 3 past printer positions on figure
     ax.plot(X, Y, Z, *args, **kwargs)
 
+    # Keeps aspect ratio square but can be computationally expensive for large GCODE
     if make_square:
         # Keeps aspect ratio square
         # http://stackoverflow.com/questions/13685386
@@ -57,8 +61,8 @@ def plot3(history, *args, fig_title=None, give=False,plot_style='default',
         ax.set_zlabel(axis_label[2])
 
     # sets the figure title
-    if fig_title:
-        plt.title(fig_title)
+    if title:
+        plt.title(title)
 
 
     # determines whether to show the figure or to return it
@@ -89,6 +93,7 @@ def color_view(history, time, *args, cmap='jet', axis_label=None, fig_title=None
     Parameters:
 
     > HISTORY:
+    > TIME:
     > ARGS:
     > CMAP:
     > AXIS_LABEL:
@@ -160,7 +165,7 @@ def color_view(history, time, *args, cmap='jet', axis_label=None, fig_title=None
                 color=colors[i,:], **kwargs)
 
 
-    # Keeps aspect ratio square
+    # Keeps aspect ratio square but can be computationally expensive for large GCODE
     # http://stackoverflow.com/questions/13685386
     # numpy array
     max_range = array([X.max()-X.min(),
@@ -238,7 +243,7 @@ def live_view(animate, *args, loop=60, ax_lim=None, ax_label=None,
 
         # Makes loop cycle so that it restarts after it's full length is reached
         if loop:
-            i = i % (loop - 1)
+            i = i % (loop)
 
         # calls the animate function
         x,y,z = animate(i) 
@@ -257,9 +262,9 @@ def live_view(animate, *args, loop=60, ax_lim=None, ax_label=None,
 
         # labeling axes
         if ax_label != None:
-            ax.set_xlabel(ax_lim[0])
-            ax.set_ylabel(ax_lim[1])
-            ax.set_zlabel(ax_lim[2])
+            ax.set_xlabel(ax_label[0])
+            ax.set_ylabel(ax_label[1])
+            ax.set_zlabel(ax_label[2])
 
         # setting figure title
         if fig_title:
@@ -272,7 +277,7 @@ def live_view(animate, *args, loop=60, ax_lim=None, ax_label=None,
 
     # if a save file is passed, the animation is saved to the file
     if save_file:
-        ani.save(save_file, writer=writer) # saves to an mp4 file
+        ani.save(save_file, writer=writer) # saves to an gif file
         
 
     # calling figure to screen
@@ -285,21 +290,24 @@ def live_view(animate, *args, loop=60, ax_lim=None, ax_label=None,
 
 # help from
 # https://matplotlib.org/gallery/widgets/slider_demo.html
-def slider_view(initial, update, *args, slide_geo=[0.25, 0.1, 0.65, 0.03],
+def slider_view(update, *args, slide_geo=[0.25, 0.1, 0.65, 0.03],
                 slide_label=None, slide_color='w', slide_range=[0,10], slide_0=0.0,
-                slide_dx=1, ax_lim=None,plot_style='default', **kwargs ):
+                slide_dx=1, ax_lim=None, ax_label=None, plot_style='default',
+                fig_title=None, **kwargs ):
 
     '''
     Parameters:
-
-    > INITIAL: the first values to be plotted. should have shape (n,3)
+    
     > UPDATE: a function that takes the slider value and dr
     > ARGS:
     > SLIDE_GEO: default to [0.25, 0.1, 0.65, 0.03]
     > SLIDE_LABEL:
     > SLIDE_COLOR: default to white
+    > SLIDE_RANGE:
     > SLIDE_0 = default to zero. inital value of the slider
     > SLIDE_DX: default to 1. increment of the slider motion
+    > AX_LIM:
+    > AX_LABEL:
     > PLOT_STYLE:
     > KWARGS:
     '''
@@ -321,10 +329,17 @@ def slider_view(initial, update, *args, slide_geo=[0.25, 0.1, 0.65, 0.03],
     # plotting inital data on the figure
     l, = plt.plot(*data,*args)
 
-    # setting axes for the first time
-    ax.set_xlim(ax_lim[0], ax_lim[1])
-    ax.set_ylim(ax_lim[2], ax_lim[3])
-    ax.set_zlim(ax_lim[4], ax_lim[5])
+    # setting axis sizes
+    if ax_lim != None:
+        ax.set_xlim(ax_lim[0], ax_lim[1])
+        ax.set_ylim(ax_lim[2], ax_lim[3])
+        ax.set_zlim(ax_lim[4], ax_lim[5])
+
+    # labeling axes
+    if ax_label != None:
+        ax.set_xlabel(ax_label[0])
+        ax.set_ylabel(ax_label[1])
+        ax.set_zlabel(ax_label[2])
 
     # adjusting to offset for the slider
     plt.subplots_adjust(bottom=0.25)
@@ -352,6 +367,16 @@ def slider_view(initial, update, *args, slide_geo=[0.25, 0.1, 0.65, 0.03],
             ax.set_xlim(ax_lim[0], ax_lim[1])
             ax.set_ylim(ax_lim[2], ax_lim[3])
             ax.set_zlim(ax_lim[4], ax_lim[5])
+
+        # labeling axes
+        if ax_label != None:
+            ax.set_xlabel(ax_label[0])
+            ax.set_ylabel(ax_label[1])
+            ax.set_zlabel(ax_label[2])
+
+        # setting figure title
+        if fig_title:
+            plt.title(fig_title)
         
 
         # drawing the new values to the figure
