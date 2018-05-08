@@ -89,7 +89,7 @@ The other features of gcody are readying existing GCODE and displaying it:
 ```python
 
 # file from https://www.thingiverse.com/thing:998999/#files
-# gcode generated with latest [Cura](https://ultimaker.com/en/products/ultimaker-cura-software)
+# gcode generated with latest Cura (https://ultimaker.com/en/products/ultimaker-cura-software)
 file = 'elefante_small.gcode'
 
 # This Reads the GCODE file line by line and converts it into a gcode object
@@ -105,6 +105,7 @@ elefante.cbar_view() # rendering all the colors can a while
 elefante.slide_view('r')
 ```
 
+![elefante real](demo/elefante_model.png)
 ![elefante color](demo/elefante.png)
 ![elefante slider](demo/elefante_slide.png)
 
