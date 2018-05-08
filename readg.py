@@ -5,7 +5,6 @@ code does!
 Written by Ryan Zambrotta
 '''
 from gcode import gcode
-from time import time
 
 
 # Contains a function to read GCODE from a file and create a gcode object that contains
