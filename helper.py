@@ -1,5 +1,5 @@
 # File contains many helper function for gcode
-from pyvector import np
+from .pyvector import np
 
 
 
