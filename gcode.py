@@ -3,19 +3,11 @@ Class gcode written by Ryan Zambrotta
 '''
 
 # imports -----------------------------------------------------------------------
-from pyvector import * # this imports numpy as np
-from gcode_line import gcode_line
-from gcode_settings import gcode_settings
-from helper import *
-from visual import *
-
-
-# Contains names of all the method in gcode object and their translation actual
-METHODS = {'G0':'rapid move','G1':'move','G20':'use in','G21':'use mm','F':'set speed',
-              'G90':'abs coords','G91':'rel coords','E':'extrude','G28':'go home',
-              'M790':'new layer',';':'comment'}
-
-
+from .pyvector import * # this imports numpy as np
+from .gcode_line import gcode_line
+from .gcode_settings import gcode_settings
+from .helper import *
+from .visual import *
 
 
 # Main GCODE class -------------------------------------------------------------
@@ -82,9 +74,14 @@ class gcode():
                               'G10':self.retract,'G11':self.unretract,
                               'G20':self.use_in,'G21':self.use_mm,'G28':self.go_home,
                               'G90':self.abs_move,'G91':self.rel_move,'G92':self.set_pos,
-                              'M83':self.abs_extrude,'M82':self.rel_extrude,'M106':self.fan,
-                              'M107':self.fan_off,
-                              'M790':self.new_layer,';':self.comment,'\n':self.blank}
+                              'M30':self.manual_mask_off,
+                              'M82':self.rel_extrude,'M83':self.abs_extrude,'M84':self.stop_idle,
+                              'M103':self.stop_extrude,'M104':self.extruders_off,
+                              'M106':self.fan,
+                              'M107':self.fan_off,'M190':self.wait_for_temp,'M721':self.unprime,
+                              'M734':self.err_report,
+                              'M756':self.first_layer_thick,'M790':self.new_layer,
+                              ';':self.comment,'\n':self.blank}
 
         # end of init
         return
@@ -121,18 +118,23 @@ class gcode():
         '''
 
         # checking if x input is a a single value, or an array
-        shape = np.shape(x)
-        if len(shape) == 2:
 
-            # (n,3) array x is broken into x,y,z components
-            if shape[1] == 3:
-                y = x[:,1]
-                z = x[:,2]
-                x = x[:,3]
-            else:
-                raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(shape))
+        # ensuring that x exists before splitting up x
+        if x != None:
+            
+            shape = np.shape(x)
+            if len(shape) == 2:
+
+                # (n,3) array x is broken into x,y,z components
+                if shape[1] == 3:
+                    y = x[:,1]
+                    z = x[:,2]
+                    x = x[:,3]
+                else:
+                    raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(shape))
 
 
+        
         # create a temperary variable to store position to eventually pass to
         # hidden methods to internally record motion
         if self.coords == 'abs':
@@ -141,7 +143,7 @@ class gcode():
             pos = np.zeros(3)
         
         # checking if given numerical intputs are single values
-        if isinstance(x,int) or isinstance(x,float) or isinstance(y,int) or isinstance(y,float) or isinstance(z,int) or isinstance(z,float):
+        if isinstance(x,(int,float)) or isinstance(y,(int,float)) or isinstance(z,(int,float)):
 
             # creating line of GCODE
             line = gcode_line('G1', com)
@@ -153,8 +155,16 @@ class gcode():
                               speed,extrude)
             
             
-            # end of move
 
+        # if no positional commands are give and only speed, extrude, and comment are needed
+        elif x == None and y ==None and z == None:
+
+            # Creating line of gcode
+            line = gcode_line('G1', com)
+
+            # writing only speed and extrude
+            self._move_format(line, speed=speed, extrude=extrude)
+            
         else:
             # array case
             if len(x) == len(y) and len(x) == len(z):
@@ -203,7 +213,7 @@ class gcode():
             pos = np.zeros(3)
 
         # checking if given numerical intputs are single values
-        if isinstance(x,int) or isinstance(x,float) or isinstance(y,int) or isinstance(y,float) or isinstance(z,int) or isinstance(z,float):
+        if isinstance(x,(int,float)) or isinstance(y,(int,float)) or isinstance(z,(int,float)):
 
             # creating an empty line of GCODE
             line = gcode_line()
@@ -263,7 +273,7 @@ class gcode():
             pos = np.zeros(3)
 
         # checking if given numerical intputs are single values
-        if isinstance(x,int) or isinstance(x,float) or isinstance(y,int) or isinstance(y,float) or isinstance(z,int) or isinstance(z,float):
+        if isinstance(x,(int,float)) or isinstance(y,(int,float)) or isinstance(z,(int,float)):
 
             # creating line of GCODE
             line = gcode_line('G1', com)
@@ -403,7 +413,7 @@ class gcode():
         return
 
     # command that moves specific printer axes to their home position
-    def go_home(self, safe=True, x=None,y=None,z=None,com='Going to home position'):
+    def go_home(self, safe=False, x=None,y=None,z=None,com='Going to home position'):
         '''
         Parameters:
 
@@ -415,12 +425,12 @@ class gcode():
             if 
         '''
 
-        # using the safe algorithm
+        # using the safe algorithm.... This is not functional yet
         if safe:
 
             # using relative motion
-            if self.coord_sys == 'abs':
-                self.rel_coords()
+            if self.coords == 'abs':
+                self.rel_move()
 
             # going home by raising z
             line = gcode_line('G28', com)
@@ -434,7 +444,7 @@ class gcode():
             if not z or z <= 0:
 
                 # move z a different height based on type of units
-                if self.coord_sys == 'mm':
+                if self.coords == 'mm':
                     z = 10
                 else:
                     z = 4
@@ -443,15 +453,16 @@ class gcode():
             # command to set the home position
             line = gcode_line('G28', com)
 
-            if x:
+            if x or x == 0:
                 line.append('X' + self.settings['pos'].format(x))
-            if y:
+            if y or y == 0:
                 line.append('Y' + self.settings['pos'].format(y))
-            if z:
+            if z or z == 0:
                 line.append('Z' + self.settings['pos'].format(z))
 
             # recording line to mem and indicating that this is a move to write
-            self.write(line, -self.current_pos)
+            # the position of zeros forces the printer to return to the zero
+            self.write(line, np.zeros(3))
             # end of go home
         return
 
@@ -508,7 +519,7 @@ class gcode():
             line.append('Z' + self.settings['pos'].format(z))
 
         # writes the extrusion command to this line
-        if extrude:
+        if extrude or extrude == 0:
             line.append('E' + self.settings['extrude'].format(extrude))
 
         # writing to memory
@@ -516,7 +527,15 @@ class gcode():
         
         return
 
+    # Method that has different meanings depending on software
+    # Hyrel def used here
+    def manual_mask_off(self, com='turn off manual control printing mask'):
+        '''
+        Parameters:
+        '''
 
+        self.write(gcode_line('M30',com))
+        return
     
 
     # Method to tell printer to use absolute extrusion
@@ -541,6 +560,55 @@ class gcode():
         
         # writing line gcode to memory
         self.write(line)
+        return
+
+    # Method to stop idle in the printer
+    def stop_idle(self, com='Stop idle hold'):
+        '''
+        Parameters:
+        
+        '''
+
+        self.write(gcode_line('M84',com))
+        return
+
+    
+
+    # Hyrel specific ???? tells printer to stop extruding
+    def stop_extrude(self, com='Stop Extrusion'):
+        '''
+        Parameters:
+        '''
+
+        self.write(gcode_line('M103',com))
+        return
+
+
+    # Hyrel Specific ????? turn off extruders
+    def extruders_off(self, t=None,s=None, com=None):
+        '''
+        Parameters:
+
+        Not sure what the values mean 
+
+        see http://hyrel3d.net/wiki/index.php/Gcode_Basics 
+        '''
+
+        # Creating GCODE line
+        line = gcode_line('M104',com)
+
+        if t or t == 0:
+            line.append('T' + str(t))
+
+        if s or s == 0:
+            line.append('S' + str(s))
+
+        # writing to memory
+        self.write(line)
+        
+        return
+    
+        
 
     # Method to control the Printer fan
     def fan(self, com=None,**kwargs):
@@ -567,6 +635,92 @@ class gcode():
         self.write(gcode_line('M107',com))
         
         return
+
+    # method that tells printer to wait till the bed is commect temperature
+    def wait_for_temp(self, temp=None, att=None, com=None):
+        '''
+        Parameters:
+
+        >  TEMP: the minimum temperature target in celsius
+        > ATT: the accurate temperature target
+
+        See http://reprap.org/wiki/G-code#M190:_Wait_for_bed_temperature_to_reach_target_temp
+        
+        '''
+
+        # Creating command
+        line = gcode_line('M190',com)
+
+        # adding parameters values and command letters to line
+        if temp:
+            line.append('S'+str(temp))
+
+        if att:
+            line.append('R'+str(att))
+
+
+        # saving to memory
+        self.write(line)
+        return
+
+
+    # Method to unprime the printer 
+    def unprime(self, com='Unpriming Printer'):
+        '''
+        Parameters:
+        
+        '''
+
+        # Writes the GCODe line
+        self.write(gcode_line('M721',com))
+
+        return
+        
+    
+    
+
+    # Seems to be a hyrel specific GCODE command
+    # http://hyrel3d.net/wiki/index.php/Gcode_Basics
+    def err_report(self, time=None, com='Set error reporting interval for redundant errors'):
+        '''
+        Parameters:
+
+        > Time: seconds for error reporting of redundant errors
+        '''
+
+        # creating GCODE command
+        line = gcode_line('M734', com)
+
+        # checking if time is given
+        if time or time == 0:
+            line.append('S' + str(time))
+
+        # writing line to memory
+        self.write(line)
+
+        return
+
+    # method that tells the printer the first layer's thickness
+    def first_layer_thick(self, thick=None, com='set first layer thickness'):
+        '''
+        Parameters:
+
+        > THICK: the thickness of the first layer in correct distance units (mm or in)
+        '''
+
+        # Creating GCODE command
+        line = gcode_line('M756', com)
+
+        if thick or thick == 0:
+            line.append('S' + str(thick))
+
+
+        # writes line to memory
+        self.write(line)
+
+        return
+    
+    
 
     # adds a new layer
     def new_layer(self, com='announce new layer'):
@@ -899,7 +1053,7 @@ class gcode():
     ######################################################################################
 
     # hidden method to format the GCODE move command
-    def _move_format(self, line,pos,x,y,z,speed=None,extrude=None,check_end=None,write=True):
+    def _move_format(self, line,pos=None,x=None,y=None,z=None,speed=None,extrude=None,check_end=None,write=True):
         '''
         Parameters:
 
@@ -947,7 +1101,7 @@ class gcode():
             line.append('F' + self._speed(speed))
 
         # writes the extrusion command to this line
-        if extrude:
+        if extrude or extrude == 0:
             line.append('E' + self.settings['extrude'].format(extrude))
 
         # writes command to check if an end point was hit. this defaults to not checking
@@ -1051,7 +1205,7 @@ class gcode():
         return
 
     # Method to control the fan parameters
-    def _control_fan(self,line,fan_n=None, fan_speed=None, invert_sig=None, fan_freq=None,
+    def _control_fan(self,line,fan_speed=None, fan_n=None, invert_sig=None, fan_freq=None,
                      set_min_speed=None, blip_time=None, select_heaters=None, restore_speed=None,
                      set_trig_temp=None, write=True):
 
@@ -1061,11 +1215,12 @@ class gcode():
         See http://reprap.org/wiki/G-code#M106:_Fan_On
         '''
         
-        if fan_n or fan_n==0:
-            line.append('P' + str(fan_n))
 
         if fan_speed or fan_speed == 0:
             line.append('S' + str(fan_speed))
+
+        if fan_n or fan_n==0:
+            line.append('P' + str(fan_n))
 
         if invert_sig:
             line.append('I' + str(invert_sig))
