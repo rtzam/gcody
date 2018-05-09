@@ -13,8 +13,7 @@ Gcody was inspired by [mecode](https://github.com/jminardi/mecode).
 # gcody example creating a serpentine pattern and an elephant
 
 # these are both normally imported from gcody
-from gcode import gcode
-from readg import read
+from gcody import *
 
 # creating parameters
 distance = 10
