@@ -4,7 +4,7 @@ code does!
 
 Written by Ryan Zambrotta
 '''
-from gcode import gcode
+from .gcode import gcode
 
 
 # Contains a function to read GCODE from a file and create a gcode object that contains
@@ -52,12 +52,16 @@ def read(file=None, text=None, n_lines=100000):
 
                 # breaks up the line into stuff before and after comment
                 try:
-                    commands, comment = line.split(';')
+                    # breaks up line into two string
+                    commands, comment = line.split(';', 1)
+                    print(commands)
 
                     # removing extra spaces from the comment (only can have spaces on the right side)
                     comment = comment.lstrip()
+                    commands = commands.rstrip()
                     
                 except Exception as e:
+                    print(e)
                     commands = line
                     comment = None
 
@@ -121,7 +125,8 @@ def read(file=None, text=None, n_lines=100000):
 
                 # splitting by comment
                 try:
-                    command, comment = line.split(';')
+                    # break line up into 2 strings
+                    command, comment = line.split(';', 1)
 
                     # removing extra spaces
                     comment = comment.lstrip()
@@ -140,40 +145,77 @@ def read(file=None, text=None, n_lines=100000):
                 command = command.split(' ')
                 
 
+                # if the M command is this, then the following arugments are needed:
+                # Fan speed commands
+                if command[0] == 'M106':
+                    
+                    # parsing through parameters:
+                    for i in command[1:]:
 
-                # parsing through parameters:
-                for i in command[1:]:
+                        if i[0] == 'S':
+                            k['fan_speed'] = i[1:]
 
-                    if i[0] == 'P':
-                        k['fan_n'] = i[1:0]
+                        elif i[0] == 'P':
+                            k['fan_n'] = i[1:]
 
-                    elif i[0] == 'S':
-                        
-                        k['fan_speed'] = i[1:0]
+                        elif i[0] == 'I':
+                            k['invert_sig'] = i[1:]
 
-                    elif i[0] == 'I':
-                        k['invert_sig'] = i[1:0]
+                        elif i[0] == 'F':
+                            k['fan_freq'] = i[1:]
 
-                    elif i[0] == 'F':
-                        k['fan_freq'] = i[1:0]
+                        elif i[0] == 'L':
+                            k['set_min_speed'] = i[1:]
 
-                    elif i[0] == 'L':
-                        k['set_min_speed'] = i[1:0]
+                        elif i[0] == 'B':
+                            k['blip_time'] = i[1:]
 
-                    elif i[0] == 'B':
-                        k['blip_time'] = i[1:0]
+                        elif i[0] == 'H':
+                            k['select_heaters'] = i[1:]
 
-                    elif i[0] == 'H':
-                        k['select_heaters'] = i[1:0]
+                        elif i[0] == 'R':
+                            k['restore_speed'] = i[1:]
 
-                    elif i[0] == 'R':
-                        k['restore_speed'] = i[1:0]
-
-                    elif i[0] == 'T':
-                        k['set_trig_temp'] = i[1:0]
-                        
+                        elif i[0] == 'T':
+                            k['set_trig_temp'] = i[1:]
                 
-                
+
+                # command for waiting till bed is certain temperature
+                elif command[0] == 'M190':
+
+                    # parsing through parameters:
+                    for i in command[1:]:
+
+                        if i[0] == 'S':
+                            k['temp'] = i[1:]
+                            
+                        elif i[0] == 'R':
+                            k['att'] = i[1:]
+
+
+                # Hyrel Command for error reporting
+                elif command[0] == 'M734':
+
+                    # iterating over all commands and checking for parameters
+                    for i in command[1:]:
+
+                        if i[0] == 'S':
+                            k['time'] = i[1:]
+
+                # Hyrel command to turn extruders off
+                elif command[0] == 'M104':
+
+                    # iterating over all commands and checking for parameters
+                    for i in command[1:]:
+
+                        if i[0] == 'S':
+                            k['s'] = i[1:]
+
+                        elif i[0] == 'T':
+                            k['t'] = i[1:]
+                            
+
+                ############################################################                
                 # pass the command to the gcode object, this runs the command
                 code[command[0]](**k,com=comment)
 
