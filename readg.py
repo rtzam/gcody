@@ -54,14 +54,12 @@ def read(file=None, text=None, n_lines=100000):
                 try:
                     # breaks up line into two string
                     commands, comment = line.split(';', 1)
-                    print(commands)
 
                     # removing extra spaces from the comment (only can have spaces on the right side)
                     comment = comment.lstrip()
                     commands = commands.rstrip()
                     
                 except Exception as e:
-                    print(e)
                     commands = line
                     comment = None
 
@@ -111,8 +109,6 @@ def read(file=None, text=None, n_lines=100000):
                     code[commands[0]](**k,com=comment)
 
                 except Exception as e:
-                    print(line)
-                    print(commands)
                     raise TypeError(e)
 
                 # end of line. moving to next one
