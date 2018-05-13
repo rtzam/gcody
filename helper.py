@@ -1,5 +1,5 @@
 # File contains many helper function for gcode
-from .pyvector import np
+from numpy import array, floor, log10
 
 
 
@@ -29,14 +29,14 @@ def min2time(m=1, printit=True, sec_tol=1e-1):
         return
 
     elif m < 60:
-        print('{} min'.format(np.floor(m)),
+        print('{} min'.format(floor(m)), # floor from numpy
           '{:0.1f} sec'.format((m%1) * 60))
         return
 
     
     
     # minutes in a year, week, day, hour 
-    min_in_x = np.array([524160, 10080, 1440, 60, 1])
+    min_in_x = array([524160, 10080, 1440, 60, 1]) # numpy
 
     # untis of of time singular and plural forms
     units_s = ['year','week','day','hour','min']
@@ -56,10 +56,10 @@ def min2time(m=1, printit=True, sec_tol=1e-1):
             # using plural form of units
             if n > 2:
                 # adding the number of years to t
-                t += '{} {} '.format(int(np.floor(n)), units_p[i])
+                t += '{} {} '.format(int(floor(n)), units_p[i]) # floor from numpy
             else:
                 # adding the number of years to t with sigular form
-                t += '{} {} '.format(int(np.floor(n)), units_s[i])
+                t += '{} {} '.format(int(floor(n)), units_s[i]) # floor from numpy
                 
             
 
@@ -79,7 +79,7 @@ def min2time(m=1, printit=True, sec_tol=1e-1):
         # formatting the seconds string
 
         # by building the format
-        decimal_places = int(np.abs(np.log10(sec_tol)))
+        decimal_places = int(abs(log10(sec_tol))) # log10 from numpy
 
         # if there are few decimal places desired, use float formatting
         if decimal_places <= 2 :
