@@ -23,9 +23,8 @@ cycles = 10
 g = gcode()
 
 # writes the GCODE command to use relative coordinates
-# this changes how position is recorded internally and will be displayed differently
-# when g.view is called  below()
-# abs_coords is the default setting for gcode and is the default for pygcode as well
+# this changes how position is recorded internally (in gcode object)
+# abs_coords is the default setting for gcode and is the default for gcody as well	
 g.rel_move()
 
 # moves the print head back and forth in x
@@ -36,7 +35,7 @@ g.move(distance, speed=10, com='Moves head 10 in x')
 for i in range(1,cycles):
     # simple move allows for modality (not repeating commands)
     # it makes the GCODE prettier :)
-    # unfortunately not all printers support it :(
+    # unfortunately, not all printers support it :(
     g.simple_move(y=10) # movement in y
     g.simple_move((-1)**i * distance) # movement in x
 
@@ -91,14 +90,13 @@ The other features of gcody are readying existing GCODE and displaying it:
 # gcode generated with latest Cura (https://ultimaker.com/en/products/ultimaker-cura-software)
 file = 'elefante_small.gcode'
 
-# This Reads the GCODE file line by line and converts it into a gcode object
-# preallocating with the number of lines in the file for speed
+# This reads the GCODE file line by line and converts it into a gcode object
 # GCODE file can be hundreds of thousands of lines, if not more. This means reading them
-# can be very slow.
-elefante = read(file, n_lines=16005)
+# can be slow. The math comes out to is roughly 13,000 move lines per second.
+elefante = read(file)
 
 # This figure colors the lines draw with a color that corresponds to a print time
-elefante.cbar_view() # rendering all the colors can a while
+elefante.cbar_view() # This method takes ~60 seconds to work.
 
 # this view has a slider bar that allows one to select the print time
 elefante.slide_view('r')
@@ -112,10 +110,9 @@ elefante.slide_view('r')
 
 
 ### Dependancies:
-* [pyvector](https://github.com/rtZamb/pyvector)
 * Numpy
 * Matplotlib
-* pillow, ImageMagic, of FFmpeg as helpers to matplotlib to save videos
+* pillow, ImageMagic, of FFmpeg as optional dependancies to matplotlib to save videos
 
 
 
