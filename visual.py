@@ -29,6 +29,11 @@ def plot3(history, *args, title=None, give=False,plot_style='default',
     ax = fig.gca(projection='3d')
     ax.set_aspect('equal')
 
+    # makes history a numpy array
+    # if history is already a numpy array then this does nothing
+    history = array(history)
+    
+
     # getting motion history
     X = history[:, 0]
     Y = history[:, 1]
@@ -115,6 +120,10 @@ def color_view(history, time, *args, cmap='jet', axis_label=None, fig_title=None
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     ax.set_aspect('equal')
+
+    # makes history a numpy array
+    # if history is already a numpy array then this does nothing
+    history = array(history)
 
     # getting motion history
     X = history[:, 0]
