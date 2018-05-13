@@ -3,24 +3,26 @@ Class gcode written by Ryan Zambrotta
 '''
 
 # imports -----------------------------------------------------------------------
-from .pyvector import * # this imports numpy as np
+# from .pyvector import * # this imports numpy as np
 from .gcode_line import gcode_line
 from .gcode_settings import gcode_settings
 from .helper import *
 from .visual import *
+from numpy import array, zeros, any, all, shape
+from numpy.linalg import norm
 
 
 # Main GCODE class -------------------------------------------------------------
 
 class gcode():
 
-    def __init__(self, debug_mode=False, settings=None, preallocate=500):
+    def __init__(self, debug_mode=False, settings=None):
         '''
         Parameters:
 
-        > DEBUG_MOVE:
-        > SETTINGS:
-        > PREALLOCATE:
+        > DEBUG_MOVE: This causes nothing to be saved internally. It is automatically 
+        > SETTINGS: This is a gcode_settings object that that contains a dictionary
+            of strings to format numbers for specific gcode commands
         '''
 
         # settings
@@ -42,11 +44,11 @@ class gcode():
         self.count = 0
 
         # creating motion history with preallocated vector
-        self.history = vec2d(shape=(int(preallocate),3))
+        self.history = []
 
         # records the current and previous position
-        self.current_pos = np.zeros(3)
-        self.previous_pos = np.zeros(3)
+        self.current_pos = zeros(3) # numpy
+        self.previous_pos = zeros(3) # numpy
 
         # determines whether to only print lines of gcode to screen or to only save to memory
         self.debug = debug_mode
@@ -57,14 +59,11 @@ class gcode():
         # sets default for
         self.unit_sys = 'mm'
 
-        # creating a library for user defined commands
-        self.user_lib = {}
-
         # internal recording of the total print time
         self.print_time = 0 # units of minutes
 
         # internal recording of time at each motion
-        self.t = vec(length=int(preallocate))
+        self.t = [] 
 
         # recording the print speed
         self.print_speed = 0
@@ -122,16 +121,16 @@ class gcode():
         # ensuring that x exists before splitting up x
         if x != None:
             
-            shape = np.shape(x)
-            if len(shape) == 2:
+            temp_shape = shape(x) # numpy
+            if len(temp_shape) == 2:
 
                 # (n,3) array x is broken into x,y,z components
-                if shape[1] == 3:
+                if temp_shape[1] == 3:
                     y = x[:,1]
                     z = x[:,2]
                     x = x[:,3]
                 else:
-                    raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(shape))
+                    raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(temp_shape))
 
 
         
@@ -140,7 +139,7 @@ class gcode():
         if self.coords == 'abs':
             pos = self.current_pos.copy()
         else:
-            pos = np.zeros(3)
+            pos = zeros(3) # numpy 
         
         # checking if given numerical intputs are single values
         if isinstance(x,(int,float)) or isinstance(y,(int,float)) or isinstance(z,(int,float)):
@@ -194,23 +193,23 @@ class gcode():
         '''
 
         # checking if x input is a a single value, or an array
-        shape = np.shape(x)
-        if len(shape) == 2:
+        temp_shape = shape(x) # numpy
+        if len(temp_shape) == 2:
 
             # (n,3) array x is broken into x,y,z components
-            if shape[1] == 3:
+            if temp_shape[1] == 3:
                 y = x[:,1]
                 z = x[:,2]
                 x = x[:,3]
             else:
-                raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(shape))
+                raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(temp_shape))
 
         # create a temperary variable to store position to eventually pass to
         # hidden methods to internally record motion
         if self.coords == 'abs':
             pos = self.current_pos.copy()
         else:
-            pos = np.zeros(3)
+            pos = zeros(3) # numpy
 
         # checking if given numerical intputs are single values
         if isinstance(x,(int,float)) or isinstance(y,(int,float)) or isinstance(z,(int,float)):
@@ -251,16 +250,16 @@ class gcode():
         '''
 
         # chacking if x input is
-        shape = np.shape(x)
-        if len(shape) == 2:
+        temp_shape = shape(x) # numpy
+        if len(temp_shape) == 2:
 
             # (n,3) array x is broken into x,y,z components
-            if shape[1] == 3:
+            if temp_shape[1] == 3:
                 y = x[:,1]
                 z = x[:,2]
                 x = x[:,3]
             else:
-                raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(shape))
+                raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(temp_shape))
 
 
         # create a temperary variable to store position to eventually pass to
@@ -270,7 +269,7 @@ class gcode():
         # This if statement is needed to adjust internal recording of position given rel
         # vs. abs coord system
         else:
-            pos = np.zeros(3)
+            pos = zeros(3) # numpy
 
         # checking if given numerical intputs are single values
         if isinstance(x,(int,float)) or isinstance(y,(int,float)) or isinstance(z,(int,float)):
@@ -462,7 +461,7 @@ class gcode():
 
             # recording line to mem and indicating that this is a move to write
             # the position of zeros forces the printer to return to the zero
-            self.write(line, np.zeros(3))
+            self.write(line, zeros(3)) # zeros is numpy 
             # end of go home
         return
 
@@ -780,13 +779,46 @@ class gcode():
         # end of credits
         return
 
-    ######################################################################################
-    ######################################################################################
-    ## Visualisation tools, Save to memory tools, Saving Tools, Calc Print time---------
-    ## ------------------------------------------------------------------------------------
-    ######################################################################################
-    ######################################################################################
+
+
+    ################################################################################
+    ################################################################################
+    ## Save to memory tools, Saving Tools, Calc Print time---------------------------
+    ################################################################################
+    ################################################################################
+
     
+    # writes the output to a file
+    def save(self, file):
+        '''
+        Parameters:
+
+        > FILE: The file name to save to. If this has no extension, then
+            a .gcode file is writen to. If there is an extension, then
+            a file of that type is used
+        '''
+
+        file_type = file.split('.')
+
+        # first case, gcode file to save to
+        if len(file_type) ==  1:
+            
+            # save file name
+            file = file + '.gcode'
+
+        # opening and creating file
+        with open(file,'w') as f:
+
+            # writes all the GCODE lines at once
+            f.writelines(self.code)
+            
+            # closing text file
+            f.close()
+
+        # end of store
+        return
+
+
 
     ## IMPORTANT function here. write writes a line to memory as well as parses
     def write(self, line, move=None, time=None):
@@ -809,7 +841,7 @@ class gcode():
             return
         else:
             # appending the line of GCODE to the vector of lines
-            if np.any(move) or np.any(move == 0):
+            if any(move) or any(move == 0): # any is overriden by numpy import
                 # records motion, time to print, and position
                 self._pos_update(move, time)
 
@@ -838,8 +870,20 @@ class gcode():
         '''
 
         # calling helper function
-        return min2time(self.print_time, printit, sec_tol)
+        return min2time(self.print_time, printit, sec_tol) # from helper.py
     # end of time
+
+
+
+
+    ######################################################################################
+    ######################################################################################
+    ## Visualisation tools -------------------------------------------------------------
+    ## ------------------------------------------------------------------------------------
+    ######################################################################################
+    ######################################################################################
+    
+
         
 
     # Method to visualize the printer path
@@ -871,7 +915,7 @@ class gcode():
                      'Z ({})'.format(self.unit_sys)]
         
         # function call from module visual
-        plot3(self.history.data(), *args, title=fig_title,
+        plot3(self.history, *args, title=fig_title,
               axis_label=ax_labels, **kwargs)
 
 
@@ -908,7 +952,7 @@ class gcode():
             
         
         # function call from module visual
-        color_view(self.history.data(), self.t.data(), *args, fig_title=fig_title,
+        color_view(self.history, self.t, *args, fig_title=fig_title,
                    colorbar_ticks=colorbar_ticks, colorbar_tick_labels=colorbar_tick_labels,
                    colorbar_label=colorbar_label, axis_label=ax_labels,**kwargs)
         
@@ -928,21 +972,22 @@ class gcode():
         Defined here: ax_label, ax_lim, fig_title, loop
         '''
 
+        # make a numpy array for indexing, vectorized operations, and method access
+        # getting motion history
+        # list comprehension to get the coordingates from self.history
+        X = array([i[0] for i in self.history]) # numpy
+        Y = array([i[1] for i in self.history]) # numpy
+        Z = array([i[2] for i in self.history]) # numpy
+
         # defining the update function to needed by the plotting function
         def update(i):
-            return self.history[0:i,0], self.history[0:i,1], self.history[0:i,2]
+            return X[0:i], Y[0:i], Z[0:i]
 
 
         # setting additional arguments
         # generating labels for the axes
         ax_labels = ['X ({})'.format(self.unit_sys),'Y ({})'.format(self.unit_sys),
                      'Z ({})'.format(self.unit_sys)]
-
-
-        # getting motion history
-        X = self.history[:, 0]
-        Y = self.history[:, 1]
-        Z = self.history[:, 2]
 
 
         # Keeps aspect ratio square but can be computationally expensive for large GCODE
@@ -966,7 +1011,7 @@ class gcode():
         
         # calling function from visual.py
         live_view(update, *args, ax_label=ax_labels, ax_lim=ax_lim,
-                  fig_title=fig_title, loop=len(self.t), **kwargs)
+                  fig_title=fig_title, loop=len(self.t)+1, **kwargs)
 
 
         return
@@ -974,11 +1019,24 @@ class gcode():
     
     # method that has a slider on the bottom of the figure to animate the print path
     def slide_view(self, *args, fig_title='Printer Path', **kwargs):
+        '''
+        Parameters:
+
+        See visual.py, slider_view 
+        '''
+
+
+
+        # getting motion history
+        # list comprehension to get the coordingates from self.history
+        X = array([i[0] for i in self.history]) # numpy
+        Y = array([i[1] for i in self.history]) # numpy
+        Z = array([i[2] for i in self.history]) # numpy
 
         # defining the update function to needed by the plotting function
         def update(i):
             # when i == self.t[-1], argument == len(self.t)
-            return self.history[0:int(i*len(self.t)/self.t[-1]),0], self.history[0:int(i*len(self.t)/self.t[-1]),1], self.history[0:int(i*len(self.t)/self.t[-1]),2]
+            return X[0:int(i*len(self.t)/self.t[-1])], Y[0:int(i*len(self.t)/self.t[-1])], Z[0:int(i*len(self.t)/self.t[-1])]
 
         # defining labels:
 
@@ -986,12 +1044,6 @@ class gcode():
         # generating labels for the axes
         ax_labels = ['X ({})'.format(self.unit_sys),'Y ({})'.format(self.unit_sys),
                      'Z ({})'.format(self.unit_sys)]
-
-
-        # getting motion history
-        X = self.history[:, 0]
-        Y = self.history[:, 1]
-        Z = self.history[:, 2]
 
 
         # Keeps aspect ratio square but can be computationally expensive for large GCODE
@@ -1022,28 +1074,7 @@ class gcode():
                     **kwargs)
         
         return
-
-        
-
     
-    # writes the output to a file
-    def save(self, file, ext='gcode'):
-
-        # save file name
-        save_file = file + '.' + ext
-
-        # opening and creating file
-        with open(save_file,'w') as f:
-
-            # writes all the GCODE lines at once
-            f.writelines(self.code)
-            
-            # closing text file
-            f.close()
-
-        # end of store
-        return
-
 
     ######################################################################################
     ######################################################################################
@@ -1106,7 +1137,7 @@ class gcode():
 
         # writes command to check if an end point was hit. this defaults to not checking
         if check_end:
-            line.append('S'+check_end)
+            line.append('S' + check_end)
             
         # determining how to return values or to save the GCODE lines to memory
         if write:
@@ -1148,7 +1179,7 @@ class gcode():
         '''
     
         # distance is the 2-norm distance between the two points
-        distance = np.linalg.norm(self.current_pos - self.previous_pos)
+        distance = norm(self.current_pos - self.previous_pos) # from numpy.linalg
 
         # checking if print_speed has been set to non_zero
         if self.print_speed != 0:
@@ -1196,8 +1227,11 @@ class gcode():
             # records position for relative coordinates. Position is in abs coordinates
             self.current_pos += pos
         
-        # recording motion 
-        self.history.append(self.current_pos)
+        # recording motion
+        # need to pass a copy because a pointer is passed by default.
+        # this would mean that self.history would just be a list of the same pointer
+        self.history.append(self.current_pos.copy())
+        
         
         # updates the time taken to move the print head
         self._time(time)
