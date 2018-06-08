@@ -1,13 +1,11 @@
-# gcody
+# gcody #
 
 Gcody is a python wrapper for GCODE. It gives common programming language functionality to GCODE as well as several visualization tools.
 This is an early draft of gcody and it is intended for general writing of GCODE, not printer specific code.
 Gcody was inspired by [mecode](https://github.com/jminardi/mecode).
 
 
-### Basics:
-
-<python code example>
+### Basics:###
 
 ```python
 # gcody example creating a serpentine pattern and an elephant
@@ -24,7 +22,7 @@ g = gcode()
 
 # writes the GCODE command to use relative coordinates
 # this changes how position is recorded internally (in gcode object)
-# abs_coords is the default setting for gcode and is the default for gcody as well	
+# abs_coords is the default setting for gcode and is the default for gcody as well
 g.rel_move()
 
 # moves the print head back and forth in x
@@ -76,8 +74,6 @@ Y10.000000
 X-10.000000  
 ```
 
-<Print head image>
-
 ![Printer Path](demo/test_path.png)
 ![Snake Gif](demo/snake.gif)
 
@@ -109,14 +105,19 @@ elefante.slide_view('r')
 
 
 
-### Dependancies:
+### Dependencies: ###
 * Numpy
 * Matplotlib
-* pillow, ImageMagic, of FFmpeg as optional dependancies to matplotlib to save videos
+
+### Optional Dependencies ###
+* pillow, ImageMagic, of FFmpeg as optional dependancies for matplotlib to save videos
+* [Mayavi](http://docs.enthought.com/mayavi/mayavi/) for viewing backends
 
 
 
-### To Do:
+
+
+### To Do: ###
 * Add clockwise motion commands
 * Add in other GCODE commands
 * Add more complex combinations of move
