@@ -1,5 +1,7 @@
 # User files to ignore
-pyvector.py
+.pypirc
+buildit.py
+*.rst
 snake.txt
 snake.gcode
 elefante.gcode
