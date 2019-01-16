@@ -5,23 +5,23 @@ class gsettings():
 
     # init method contains all the default options
     def __init__(self, pos_str='{:0.4f}',speed_str='{:0.0f}',
-                 extrude_str='{:0.4f}'):
+                 extrude_str='{:0.4f}', graphics='matplotlib'):
 
         # assigning values to memory
+        # these are the string formatters when writing numbers to gcode
         self.lib = {'pos':pos_str, 'extrude':extrude_str, 'speed':speed_str}
-        
+
+        # this is the graphics backend choice to avoid specifying
+        # it everytime for different types of figures
+        self.graphics = graphics
+
         # end of init
         return
 
     # method to format a string that provides checks on input arguments
     def format(self, lib_arg, x):
+        return self.lib[lib_arg].format(x)
 
-        # checks if argument passed is a key in dictionary
-        if lib_arg in self.lib:
-            return self.lib[lib_arg].format(x)
-        else:
-            raise ValueError('Key {} not in dictionary'.format(lib_arg))
-    
     # methods to use builtin functions ----------------------------------------------
     def __repr__(self):
         return str(self.lib)
