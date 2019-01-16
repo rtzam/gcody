@@ -1,11 +1,13 @@
 # gcody #
 
+[![PyPI version](https://badge.fury.io/py/gcody.svg)](https://badge.fury.io/py/gcody)
+
 Gcody is a python wrapper for GCODE. It gives common programming language functionality to GCODE as well as several visualization tools.
 This is an early draft of gcody and it is intended for general writing of GCODE, not printer specific code.
 Gcody was inspired by [mecode](https://github.com/jminardi/mecode).
 
 
-### Basics:###
+### Basics: ###
 
 ```python
 # gcody example creating a serpentine pattern and an elephant
@@ -46,7 +48,7 @@ g.animated('b',save_file='snake.gif')
 
 # saves the GCODE to a file
 g.save('snake') # outputs file 'snake.gcode'
-g.save('snake','txt') # outputs file 'snake.txt'
+g.save('snake.txt') # outputs file 'snake.txt'
 ```
 
 The output GCODE is:
@@ -103,22 +105,31 @@ elefante.slide_view('r')
 ![elefante color](demo/elefante.png)
 ![elefante slider](demo/elefante_slide.png)
 
+Or using the mayavi backend:
+![elefante mayavi color](demo/elefante_mayavi.jpg)
+![elefante mayavi cbar](demo/elefante_mayavi_cbar.jpg)
+
+
 
 
 ### Dependencies: ###
-* Numpy
-* Matplotlib
+* [Numpy](https://github.com/numpy/numpy)
+* [Matplotlib](https://github.com/matplotlib/matplotlib) or [Mayavi](http://docs.enthought.com/mayavi/mayavi/) as a viewing backend - (defaults to matplotlib)
+
 
 ### Optional Dependencies ###
 * pillow, ImageMagic, of FFmpeg as optional dependancies for matplotlib to save videos
-* [Mayavi](http://docs.enthought.com/mayavi/mayavi/) for viewing backends
-
-
-
 
 
 ### To Do: ###
 * Add clockwise motion commands
+* Measure material needed for print job
+* Record when extruding and when not
+* Account for Printer Geometry
+  - Nozzle hight, width
+* Speed up larger viewing large GCODE files
+  - Mayavi is much faster but can we do better?
 * Add in other GCODE commands
+  - Help with reading in printer specific code
 * Add more complex combinations of move
 * Take requests for features!
