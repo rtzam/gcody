@@ -118,6 +118,7 @@ class gcode():
         # checking if x input is a a single value, or an array
 
         # ensuring that x exists before splitting up x
+        # parsing the x variable. y and z must be none
         if any(x) or any(x == 0):
 
             temp_shape = shape(x) # numpy
@@ -132,16 +133,16 @@ class gcode():
                     raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(temp_shape))
 
 
-            # # making a list-like object with shape (3,) into x,y,z
-            # elif len(temp_shape) == 1:
+            # making a list-like object with shape (3,) into x,y,z
+            elif len(temp_shape) == 1:
 
-            #     # (n,3) array x is broken into x,y,z components
-            #     if temp_shape == (3,):
-            #         y = x[1]
-            #         z = x[2]
-            #         x = x[0]
-            #     else:
-            #         raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(temp_shape))
+                # (n,3) array x is broken into x,y,z components
+                if temp_shape == (3,):
+                    y = x[1]
+                    z = x[2]
+                    x = x[0]
+                #else:
+                #    raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(temp_shape))
 
         # create a temperary variable to store position to eventually pass to
         # hidden methods to internally record motion
@@ -220,7 +221,7 @@ class gcode():
             elif len(temp_shape) == 1:
 
                 # (n,3) array x is broken into x,y,z components
-                if temp_shape == (3,):
+                if temp_shape == (3,) and y == None and z == None:
                     y = x[1]
                     z = x[2]
                     x = x[0]
@@ -292,7 +293,7 @@ class gcode():
             elif len(temp_shape) == 1:
 
                 # (n,3) array x is broken into x,y,z components
-                if temp_shape == (3,):
+                if temp_shape == (3,) and y == None and z == None:
                     y = x[1]
                     z = x[2]
                     x = x[0]
