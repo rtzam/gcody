@@ -5,5 +5,6 @@
 from .gsettings import gsettings
 from .gcode import gcode
 from .readg import read
+from .stl import readstl, viewstl, viewmesh
 
 
