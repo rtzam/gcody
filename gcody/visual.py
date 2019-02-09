@@ -264,13 +264,12 @@ def color_view(history, time, *args, cmap='jet', axis_label=None, fig_title=None
 
         # calling plot3 because mayavi's default is color
         fig, mlab = plot3(history, time, backend='mayavi', give=True, colormap=cmap,
-                          figsize=figsize, axis_label=axis_label, title=fig_title)
+                          figsize=figsize, axis_label=axis_label, title=fig_title, **kwargs)
 
         # adding color bar to the figure
         # see http://docs.enthought.com/mayavi/mayavi/auto/mlab_decorations.html
         # for additional kwargs
-        mlab.colorbar(fig, title=colorbar_label, orientation=orientation,
-                      **kwargs)
+        mlab.colorbar(fig, title=colorbar_label, orientation=orientation)
         
         # deciding how to return the figure
         if give:
