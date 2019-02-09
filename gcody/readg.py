@@ -18,9 +18,6 @@ def read(file=None, **kwargs):
     > KWARGS: these are passed to an empty gcode object when it is constructed
     '''
 
-    # list that will hold all the lines in the file given
-    lines = []
-
 
     # open give file as read only
     if isinstance(file, str):
@@ -28,7 +25,7 @@ def read(file=None, **kwargs):
 
     # This should just pass a pointer so should be quick and saves a lot of typing
     elif isinstance(file, list):
-        f = text
+        f = file
     else:
         raise RuntimeError('Unable to read input data of type {}'.format(type(file)))
 
@@ -242,7 +239,8 @@ def read(file=None, **kwargs):
             raise Warning('Unknown command {}, Skipping command'.format(line))
 
     # closing file
-    f.close()
+    if isinstance(file, str):
+        f.close()
 
     # returning the filled gcode object
     return code
