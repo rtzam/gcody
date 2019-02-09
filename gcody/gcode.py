@@ -12,7 +12,7 @@ from numpy.linalg import norm
 
 
 # Main GCODE class -------------------------------------------------------------
-
+# represents and stores all information of a path and constructs the GCODE 
 class gcode():
 
     def __init__(self, debug_mode=False, settings=None):
@@ -132,21 +132,16 @@ class gcode():
                     raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(temp_shape))
 
 
-            # making a list-like object with shape (3,) into x,y,z
-            elif len(temp_shape) == 1:
+            # # making a list-like object with shape (3,) into x,y,z
+            # elif len(temp_shape) == 1:
 
-                # (n,3) array x is broken into x,y,z components
-                if temp_shape == (3,):
-                    y = x[1]
-                    z = x[2]
-                    x = x[0]
-                else:
-                    raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(temp_shape))
-
-
-
-
-
+            #     # (n,3) array x is broken into x,y,z components
+            #     if temp_shape == (3,):
+            #         y = x[1]
+            #         z = x[2]
+            #         x = x[0]
+            #     else:
+            #         raise ValueError('The input array must have shape (n,3) or (n,) but has shape {}'.format(temp_shape))
 
         # create a temperary variable to store position to eventually pass to
         # hidden methods to internally record motion
@@ -170,7 +165,7 @@ class gcode():
 
 
         # if no positional commands are give and only speed, extrude, and comment are needed
-        elif x == None and y == None and z == None:
+        elif all(x == None) and all(y == None) and all(z == None):
 
             # Creating line of gcode
             line = gline('G1', com)
@@ -939,7 +934,7 @@ class gcode():
         another color not with a legend
     > break this into several methods
     '''
-    def view(self, *args, fig_title='Print Path',**kwargs):
+    def view(self, *args, fig_title='Print Path', labels=False, **kwargs):
 
         '''
         Parameters:
@@ -958,16 +953,21 @@ class gcode():
                      'Z ({})'.format(self.unit_sys)]
 
         # function call from module visual
-        fig = plot3(self.history, *args, title=fig_title,
-              axis_label=ax_labels, backend=self.settings.graphics,
-              **kwargs)
+        if labels:
+
+            fig = plot3(self.history, *args, title=fig_title,
+                axis_label=ax_labels, backend=self.settings.graphics,
+                **kwargs)
+        else:
+            fig = plot3(self.history, *args, title=fig_title,
+                        backend=self.settings.graphics, **kwargs)
 
 
         return fig
 
 
     # method that has a colorbar to parameterize the time of the print
-    def cbar_view(self, *args, fig_title='Printer Path', **kwargs):
+    def cbar_view(self, *args, labels=False, fig_title='Printer Path', **kwargs):
         '''
         Parameters:
 
@@ -996,10 +996,18 @@ class gcode():
 
 
         # function call from module visual
-        fig = color_view(self.history, self.t, *args, fig_title=fig_title,
+        if labels:
+
+            fig = color_view(self.history, self.t, *args, fig_title=fig_title,
+                    colorbar_ticks=colorbar_ticks, colorbar_tick_labels=colorbar_tick_labels,
+                    colorbar_label=colorbar_label, axis_label=ax_labels,
+                    backend=self.settings.graphics, **kwargs)
+        else:
+            fig = color_view(self.history, self.t, *args, fig_title=fig_title,
                    colorbar_ticks=colorbar_ticks, colorbar_tick_labels=colorbar_tick_labels,
-                   colorbar_label=colorbar_label, axis_label=ax_labels,
+                   colorbar_label=colorbar_label,
                    backend=self.settings.graphics, **kwargs)
+        
 
 
 
@@ -1240,7 +1248,7 @@ class gcode():
         else:
             # only printing warning once
             if self.count == 1:
-                raise Warning('Print speed not set. Print Times are Inf')
+                print('Print speed not set. Print Times are Inf')
 
         # adds an element to a vector of time
         self.t.append(self.print_time)
