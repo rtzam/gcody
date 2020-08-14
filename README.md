@@ -2,6 +2,12 @@
 
 [![PyPI version](https://badge.fury.io/py/gcody.svg)](https://badge.fury.io/py/gcody)
 
+## __WARNING__
+I am no longer maintaining this project :( 
+I hope to see some other GCODE abstractions/visualizers out there!
+Please see [mecode](https://github.com/jminardi/mecode) for a better maintained project.
+
+
 Gcody is a python wrapper for GCODE. It gives common programming language functionality to GCODE as well as several visualization tools.
 This is an early draft of gcody and it is intended for general writing of GCODE, not printer specific code.
 Gcody was inspired by [mecode](https://github.com/jminardi/mecode).
